@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
@@ -52,17 +52,17 @@ public class TextSearcher {
     /**
      * Finds all files with the required extension and the required text in them
      *
-     * @return a list containing all files with the required extension and the required text
+     * @return a set containing all files with the required extension and the required text
      */
-    public List<MarkedFile> getFiles() throws IOException {
+    public Set<MarkedFile> getFiles() throws IOException {
         final EntryMessage entryMessage = log.traceEntry("getFiles() of {}", this);
         final ForkJoinPool pool = new ForkJoinPool();
-        final List<MarkedFile> result = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
+        final Set<MarkedFile> result = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
                 .map(path -> pool.submit(() -> MarkedFile.of(path, getText())))
                 .map(this::getResult)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
         return log.traceExit(entryMessage, result);
     }
 

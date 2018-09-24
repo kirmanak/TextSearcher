@@ -68,7 +68,7 @@ public class TextSearcher {
     }
 
     /**
-     * Recursively calls itself, submiting Callables marking files to the pool
+     * Recursively calls itself, submitting Callables marking files to the pool
      *
      * @param directory directory from which to start
      */

@@ -1,5 +1,6 @@
 package kirmanak.TextSearcher;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
@@ -9,10 +10,10 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * Represents a marked file: file and list of marked sub-strings.
@@ -21,9 +22,10 @@ import java.util.Set;
 @Log4j2
 @ToString
 @RequiredArgsConstructor
+@EqualsAndHashCode
 public class MarkedFile {
     private final Path path;
-    private final Set<Markup> markups;
+    private final Collection<Markup> markups;
 
     /**
      * Marks the passed file if the required text is present
@@ -37,8 +39,6 @@ public class MarkedFile {
         if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
             return log.traceExit(entryMessage, Optional.empty());
         }
-        final Set<Markup> markups = new HashSet<>();
-        final int length = text.length();
         final List<String> lines;
         try {
             lines = Files.readAllLines(path);
@@ -46,16 +46,32 @@ public class MarkedFile {
             log.error(entryMessage, err);
             return log.traceExit(entryMessage, Optional.empty());
         }
-        for (int lineNumber = 0; lineNumber < lines.size(); lineNumber++) {
-            final String line = lines.get(lineNumber);
+        final Collection<Markup> markups = markup(lines, text);
+        return log.traceExit(
+                entryMessage, markups.isEmpty() ? Optional.empty() : Optional.of(new MarkedFile(path, markups))
+        );
+    }
+
+    /**
+     * Creates markup for the given strings
+     *
+     * @param lines the given strings
+     * @param text  the text to search
+     * @return a set of markups
+     */
+    private static Collection<Markup> markup(final Collection<String> lines, final String text) {
+        final EntryMessage entryMessage = log.traceEntry("markup(path = {}, text = {})", lines, text);
+        final Collection<Markup> markups = new ArrayList<>(lines.size());
+        final int length = text.length();
+        int lineNumber = 0;
+        for (final String line : lines) {
             int rangeStart = line.indexOf(text);
             while (rangeStart >= 0) {
                 markups.add(new Markup(lineNumber, rangeStart, length));
                 rangeStart = line.indexOf(text, rangeStart + 1);
             }
+            lineNumber++;
         }
-        return log.traceExit(
-                entryMessage, markups.isEmpty() ? Optional.empty() : Optional.of(new MarkedFile(path, markups))
-        );
+        return log.traceExit(entryMessage, markups);
     }
 }

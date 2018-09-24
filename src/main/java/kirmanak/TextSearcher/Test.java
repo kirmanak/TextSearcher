@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 public class Test {
     public static void main(String[] args) {
         final EntryMessage entryMessage = log.traceEntry("main(args = {})", (Object[]) args);
-        final TextSearcher textSearcher = new TextSearcher(Paths.get("/"), "log", "error");
+        final TextSearcher textSearcher = new TextSearcher(Paths.get("/var/log"), "log", "error");
         textSearcher.getFiles().parallelStream().forEach((path) -> System.out.println(path.toString()));
         log.traceExit(entryMessage);
     }

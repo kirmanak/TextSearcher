@@ -6,7 +6,6 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,7 +79,7 @@ public class TextSearcher {
                 if (file.isDirectory()) {
                     helper(file);
                 } else {
-                    tasks.add(pool.submit(() -> markFile(file.toPath())));
+                    tasks.add(pool.submit(() -> MarkedFile.of(file.toPath(), getText())));
                 }
             }
         }
@@ -106,22 +105,5 @@ public class TextSearcher {
             result = Optional.empty();
         }
         return log.traceExit(entryMessage, result);
-    }
-
-    /**
-     * Markups the file
-     *
-     * @param path the target file
-     * @return optional containing markup results
-     */
-    private Optional<MarkedFile> markFile(final Path path) {
-        final EntryMessage entryMessage = log.traceEntry("markFile(path = {}) of {}", path, this);
-        final MarkedFile marked;
-        try {
-            marked = new MarkedFile(path, getText());
-        } catch (final IOException err) {
-            return log.traceExit(entryMessage, Optional.empty());
-        }
-        return log.traceExit(entryMessage, Optional.of(marked));
     }
 }

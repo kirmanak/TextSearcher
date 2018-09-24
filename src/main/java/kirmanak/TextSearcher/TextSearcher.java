@@ -5,9 +5,10 @@ import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -22,8 +23,6 @@ public class TextSearcher {
     private final Path rootFolder;
     private final String extension;
     private final String text;
-    private final ForkJoinPool pool = new ForkJoinPool();
-    private final List<ForkJoinTask<Optional<MarkedFile>>> tasks = new ArrayList<>();
 
     /**
      * Creates a new instance of TextSearcher
@@ -55,35 +54,16 @@ public class TextSearcher {
      *
      * @return a list containing all files with the required extension and the required text
      */
-    public List<MarkedFile> getFiles() {
+    public List<MarkedFile> getFiles() throws IOException {
         final EntryMessage entryMessage = log.traceEntry("getFiles() of {}", this);
-        helper(getRootFolder().toFile());
-        final List<MarkedFile> result = tasks.stream()
+        final ForkJoinPool pool = new ForkJoinPool();
+        final List<MarkedFile> result = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
+                .map(path -> pool.submit(() -> MarkedFile.of(path, getText())))
                 .map(this::getResult)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
         return log.traceExit(entryMessage, result);
-    }
-
-    /**
-     * Recursively calls itself, submitting Callables marking files to the pool
-     *
-     * @param directory directory from which to start
-     */
-    private void helper(final File directory) {
-        final EntryMessage entryMessage = log.traceEntry("helper(directory = {}) of {}", directory, this);
-        final File[] files = directory.listFiles();
-        if (files != null) {
-            for (final File file : files) {
-                if (file.isDirectory()) {
-                    helper(file);
-                } else {
-                    tasks.add(pool.submit(() -> MarkedFile.of(file.toPath(), getText())));
-                }
-            }
-        }
-        log.traceExit(entryMessage);
     }
 
     /**

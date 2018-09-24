@@ -9,9 +9,10 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Represents a marked file: file and list of marked sub-strings.
@@ -22,7 +23,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MarkedFile {
     private final Path path;
-    private final List<Markup> markups;
+    private final Set<Markup> markups;
 
     /**
      * Marks the passed file if the required text is present
@@ -32,8 +33,11 @@ public class MarkedFile {
      * @return the marked file if file has been opened and text is present, empty otherwise
      */
     public static Optional<MarkedFile> of(final Path path, final String text) {
-        final EntryMessage entryMessage = log.traceEntry("MarkedFile(path = {}, text = {})", path, text);
-        final List<Markup> markups = new ArrayList<>();
+        final EntryMessage entryMessage = log.traceEntry("of(path = {}, text = {})", path, text);
+        if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+            return log.traceExit(entryMessage, Optional.empty());
+        }
+        final Set<Markup> markups = new HashSet<>();
         final int length = text.length();
         final List<String> lines;
         try {

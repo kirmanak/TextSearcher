@@ -62,7 +62,7 @@ public class MarkedFile {
      */
     private static Collection<Markup> markup(final Collection<String> lines, final String text) {
         final EntryMessage entryMessage = log.traceEntry("markup(path = {}, text = {})", lines, text);
-        final Collection<Markup> markups = new ArrayList<>(lines.size());
+        final ArrayList<Markup> markups = new ArrayList<>(lines.size());
         final int length = text.length();
         int lineNumber = 0;
         for (final String line : lines) {
@@ -73,6 +73,7 @@ public class MarkedFile {
             }
             lineNumber++;
         }
+        markups.trimToSize();
         return log.traceExit(entryMessage, markups);
     }
 }

@@ -119,7 +119,7 @@ public class EntryPoint extends Application {
         if (files.size() > 0) {
             final MarkedFile file = files.get(0);
             final StringBuilder builder = new StringBuilder();
-            file.getLines().forEach(builder::append);
+            file.getLines().stream().map((line) -> String.format("%s%n", line)).forEach(builder::append);
             TEXT.setText(builder.toString());
         }
         log.traceExit(entryMessage);

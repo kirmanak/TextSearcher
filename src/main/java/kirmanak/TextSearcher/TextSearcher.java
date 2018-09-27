@@ -31,7 +31,7 @@ public class TextSearcher {
      * @param extension  Extension of target files
      * @param text       Text to search
      */
-    public TextSearcher(final Path rootFolder, final String extension, final String text) {
+    public TextSearcher(final Path rootFolder, final String extension, final String text) throws IllegalArgumentException {
         final EntryMessage entryMessage = log.traceEntry("TextSearcher(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text);
         if (!rootFolder.toFile().isDirectory() || !rootFolder.toFile().canExecute()) {
             final IllegalArgumentException err = new IllegalArgumentException("Root folder must be a executable directory.");
@@ -57,12 +57,14 @@ public class TextSearcher {
     public Collection<MarkedFile> getFiles() throws IOException {
         final EntryMessage entryMessage = log.traceEntry("getFiles() of {}", this);
         final ForkJoinPool pool = new ForkJoinPool();
-        final Collection<MarkedFile> result = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
-                .map(path -> pool.submit(() -> MarkedFile.of(path, getText())))
-                .map(this::getResult)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        final Collection<MarkedFile> result = pool.invoke(ForkJoinTask.adapt(() ->
+                Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
+                        .map(path -> pool.submit(() -> MarkedFile.of(path, getText())))
+                        .map(this::getResult)
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .collect(Collectors.toList()))
+        );
         return log.traceExit(entryMessage, result);
     }
 

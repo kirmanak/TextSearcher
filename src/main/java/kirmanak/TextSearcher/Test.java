@@ -10,7 +10,13 @@ import java.nio.file.Paths;
 public class Test {
     public static void main(String[] args) {
         final EntryMessage entryMessage = log.traceEntry("main(args = {})", (Object[]) args);
-        final TextSearcher textSearcher = new TextSearcher(Paths.get("/home/kirmanak/logs"), "log", "error");
+        final TextSearcher textSearcher;
+        try {
+            textSearcher = new TextSearcher(Paths.get("/home/kirmanak/logs"), "log", "error");
+        } catch (final IllegalArgumentException err) {
+            log.error(entryMessage, err);
+            return;
+        }
         try {
             textSearcher.getFiles().forEach(System.out::println);
         } catch (final IOException e) {

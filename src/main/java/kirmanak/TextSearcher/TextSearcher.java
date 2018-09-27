@@ -5,15 +5,15 @@ import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
-import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 @Getter
@@ -52,40 +52,19 @@ public class TextSearcher {
     /**
      * Finds all files with the required extension and the required text in them
      *
-     * @return a set containing all files with the required extension and the required text
+     * @param
+     * @return a collection containing all files with the required extension and the required text
      */
-    public Collection<MarkedFile> getFiles() throws IOException {
+    public Future<List<Future<Optional<MarkedFile>>>> getFiles() {
         final EntryMessage entryMessage = log.traceEntry("getFiles() of {}", this);
-        final ForkJoinPool pool = new ForkJoinPool();
-        final Collection<MarkedFile> result = pool.invoke(ForkJoinTask.adapt(() ->
+        final ExecutorService executorService = Executors.newWorkStealingPool();
+        final Future<List<Future<Optional<MarkedFile>>>> result = executorService.submit(() ->
                 Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
-                        .map(path -> pool.submit(() -> MarkedFile.of(path, getText())))
-                        .map(this::getResult)
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(Collectors.toList()))
+                        .map(path -> (Callable<Optional<MarkedFile>>) () -> MarkedFile.of(path, getText()))
+                        .map(executorService::submit)
+                        .collect(Collectors.toList())
         );
-        return log.traceExit(entryMessage, result);
-    }
 
-    /**
-     * Unwraps markup results from ForkJoinTask
-     *
-     * @param task the target ForkJoinTask
-     * @return optional containing the markup results
-     */
-    private Optional<MarkedFile> getResult(final ForkJoinTask<Optional<MarkedFile>> task) {
-        final EntryMessage entryMessage = log.traceEntry("getResult(task = {}) of {}", task, this);
-        Optional<MarkedFile> result;
-        try {
-            result = task.get();
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            result = Optional.empty();
-        } catch (final ExecutionException e) {
-            log.error("Error: {}", e);
-            result = Optional.empty();
-        }
         return log.traceExit(entryMessage, result);
     }
 }

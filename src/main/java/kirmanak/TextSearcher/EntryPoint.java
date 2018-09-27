@@ -12,10 +12,13 @@ import javafx.stage.Stage;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
-import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @Log4j2
 public class EntryPoint extends Application {
@@ -69,35 +72,49 @@ public class EntryPoint extends Application {
     }
 
     /**
-     * Performs the search and passes the result if any to showFiles()
+     * Performs the search and passes the result if any to unwrapFiles()
      *
      * @param searcher initialized TextSearcher instance
      */
     private void search(final TextSearcher searcher) {
         final EntryMessage entryMessage = log.traceEntry("search(searcher = {}) of {}", searcher, this);
-        final Collection<MarkedFile> markedFiles;
-        try {
-            markedFiles = searcher.getFiles();
-        } catch (final IOException err) {
-            log.error(entryMessage, err);
-            return;
-        }
-        showFiles(markedFiles);
+        final Future<List<Future<Optional<MarkedFile>>>> markedFiles = searcher.getFiles();
+        CompletableFuture.runAsync(() -> {
+            try {
+                showFiles(unwrapFiles(markedFiles));
+            } catch (final InterruptedException err) {
+                log.error(entryMessage, err);
+                Thread.currentThread().interrupt();
+            } catch (final ExecutionException err) {
+                log.error(entryMessage, err);
+            }
+        });
         log.traceExit(entryMessage);
     }
 
     /**
-     * Shows the found files in TextArea
+     * Unwraps futures
      *
-     * @param markedFiles the found files
+     * @param future Future containing all found files
      */
-    private void showFiles(final Collection<MarkedFile> markedFiles) {
-        final EntryMessage entryMessage =
-                log.traceEntry("showFiles(markedFiles = {}) of {}", markedFiles, this);
-        final Iterator<MarkedFile> iterator = markedFiles.iterator();
-        if (iterator.hasNext()) {
+    private List<MarkedFile> unwrapFiles(final Future<List<Future<Optional<MarkedFile>>>> future)
+            throws ExecutionException, InterruptedException {
+        final EntryMessage entryMessage = log.traceEntry("unwrapFiles(future = {}) of {}", future, this);
+        final List<MarkedFile> list = new ArrayList<>();
+        for (final Future<Optional<MarkedFile>> optionalFuture : future.get()) {
+            final Optional<MarkedFile> file = optionalFuture.get();
+            file.ifPresent(list::add);
+        }
+
+        return log.traceExit(entryMessage, list);
+    }
+
+    private void showFiles(final List<MarkedFile> files) {
+        final EntryMessage entryMessage = log.traceEntry("showFiles(files = {}) of {}", files, this);
+        if (files.size() > 0) {
+            final MarkedFile file = files.get(0);
             final StringBuilder builder = new StringBuilder();
-            for (final String line : iterator.next().getLines()) {
+            for (final String line : file.getLines()) {
                 builder.append(line);
             }
             AREA.setText(builder.toString());

@@ -52,7 +52,6 @@ public class TextSearcher {
     /**
      * Finds all files with the required extension and the required text in them
      *
-     * @param
      * @return a collection containing all files with the required extension and the required text
      */
     public Future<List<Future<Optional<MarkedFile>>>> getFiles() {

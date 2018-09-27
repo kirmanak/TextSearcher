@@ -4,7 +4,6 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
@@ -19,12 +18,12 @@ import java.util.stream.Collectors;
  */
 @Getter
 @Log4j2
-@ToString
 @RequiredArgsConstructor
 public class MarkedFile {
     private final Path path;
     private final Collection<Markup> markups;
     private final List<String> lines;
+    private TextFlow textFlow = null;
 
     /**
      * Marks the passed file if the required text is present
@@ -80,8 +79,11 @@ public class MarkedFile {
      *
      * @return a TextFlow with highlighted text
      */
-    public TextFlow toTextFlow() {
-        final EntryMessage entryMessage = log.traceEntry("toTextFlow() of {}", this);
+    public TextFlow getTextFlow() {
+        final EntryMessage entryMessage = log.traceEntry("getTextFlow() of {}", this);
+        if (textFlow != null) {
+            return textFlow;
+        }
         final List<Text> textList = new ArrayList<>(lines.size() * 2);
         final Map<Integer, List<Markup>> markupsPerLine = markups.stream()
                 .collect(Collectors.groupingBy(Markup::getLineNumber, Collectors.toList()));
@@ -93,7 +95,8 @@ public class MarkedFile {
                 textList.add(new Text(line));
             }
         }
-        return log.traceExit(entryMessage, new TextFlow(textList.toArray(new Text[0])));
+        textFlow = new TextFlow(textList.toArray(new Text[0]));
+        return log.traceExit(entryMessage, textFlow);
     }
 
     /**
@@ -141,5 +144,10 @@ public class MarkedFile {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public String toString() {
+        return getPath().toString();
     }
 }

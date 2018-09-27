@@ -117,10 +117,10 @@ public class MarkedFile {
         while (iterator.hasNext()) {
             final Markup previous = last;
             last = iterator.next();
-            textList.add(last.toText(line));
             if (last.getRangeStart() > previous.getRangeEnd()) {
                 textList.add(new Text(line.substring(previous.getRangeEnd(), last.getRangeStart())));
             }
+            textList.add(last.toText(line));
         }
         if (last.getRangeEnd() < line.length()) {
             textList.add(new Text(line.substring(last.getRangeEnd())));

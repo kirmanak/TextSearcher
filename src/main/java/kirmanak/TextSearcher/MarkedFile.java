@@ -2,7 +2,6 @@ package kirmanak.TextSearcher;
 
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
@@ -22,7 +21,6 @@ import java.util.stream.Collectors;
 @Log4j2
 @ToString
 @RequiredArgsConstructor
-@EqualsAndHashCode
 public class MarkedFile {
     private final Path path;
     private final Collection<Markup> markups;
@@ -88,22 +86,60 @@ public class MarkedFile {
         final Map<Integer, List<Markup>> markupsPerLine = markups.stream()
                 .collect(Collectors.groupingBy(Markup::getLineNumber, Collectors.toList()));
         for (int i = 0; i < lines.size(); i++) {
-            final String line = String.format("%s%n", lines.get(i));
+            final String line = lines.get(i).concat("\n");
             if (markupsPerLine.containsKey(i)) {
-                final List<Markup> markups = markupsPerLine.get(i);
-                textList.add(markups.get(0).toText(line));
-                for (int j = 1; j < markups.size(); j++) {
-                    final Markup current = markups.get(j);
-                    final Markup previous = markups.get(j - 1);
-                    textList.add(current.toText(line));
-                    if (current.getRangeStart() > previous.getRangeEnd()) {
-                        textList.add(new Text(line.substring(previous.getRangeEnd(), current.getRangeStart())));
-                    }
-                }
+                textList.addAll(textsFromLine(line, markupsPerLine.get(i)));
             } else {
                 textList.add(new Text(line));
             }
         }
         return log.traceExit(entryMessage, new TextFlow(textList.toArray(new Text[0])));
+    }
+
+    /**
+     * Generates a list of Text instances from the given line and markups for it
+     *
+     * @param line           the line content
+     * @param markupsPerLine the markups for the text in the line
+     * @return list of Text instances (some have a color, some not)
+     */
+    private List<Text> textsFromLine(final String line, final List<Markup> markupsPerLine) {
+        final EntryMessage entryMessage = log.traceEntry(
+                "textsFromLine(line = {}, markupsPerLine = {}) of {}", line, markupsPerLine, this
+        );
+        final List<Text> textList = new ArrayList<>();
+        final Iterator<Markup> iterator = markupsPerLine.iterator();
+        Markup last = iterator.next();
+        if (last.getRangeStart() > 0) {
+            textList.add(new Text(line.substring(0, last.getRangeStart())));
+        }
+        textList.add(last.toText(line));
+        while (iterator.hasNext()) {
+            final Markup previous = last;
+            last = iterator.next();
+            textList.add(last.toText(line));
+            if (last.getRangeStart() > previous.getRangeEnd()) {
+                textList.add(new Text(line.substring(previous.getRangeEnd(), last.getRangeStart())));
+            }
+        }
+        if (last.getRangeEnd() < line.length()) {
+            textList.add(new Text(line.substring(last.getRangeEnd())));
+        }
+        return log.traceExit(entryMessage, textList);
+    }
+
+    @Override
+    public int hashCode() {
+        return getPath().hashCode();
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (obj instanceof MarkedFile) {
+            final MarkedFile markedFile = (MarkedFile) obj;
+            return markedFile.getPath().equals(getPath());
+        } else {
+            return false;
+        }
     }
 }

@@ -26,6 +26,7 @@ import java.util.Optional;
 public class MarkedFile {
     private final Path path;
     private final Collection<Markup> markups;
+    private final List<String> lines;
 
     /**
      * Marks the passed file if the required text is present
@@ -48,7 +49,7 @@ public class MarkedFile {
         }
         final Collection<Markup> markups = markup(lines, text);
         return log.traceExit(
-                entryMessage, markups.isEmpty() ? Optional.empty() : Optional.of(new MarkedFile(path, markups))
+                entryMessage, markups.isEmpty() ? Optional.empty() : Optional.of(new MarkedFile(path, markups, lines))
         );
     }
 

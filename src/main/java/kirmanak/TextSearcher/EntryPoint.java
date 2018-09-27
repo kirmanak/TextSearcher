@@ -59,9 +59,12 @@ public class EntryPoint extends Application {
         final GridPane gridPane = new GridPane();
         listView.setItems(FILES);
         listView.setMinWidth(300);
-        listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-                Platform.runLater(() -> TEXT_FLOW.getChildren().setAll(newValue.getTextFlow().getChildren()))
-        );
+        listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue.equals(oldValue)) {
+                return;
+            }
+            Platform.runLater(() -> TEXT_FLOW.getChildren().setAll(newValue.toTextFlow().getChildrenUnmodifiable()));
+        });
         gridPane.add(listView, 0, 0);
         gridPane.add(textScrollPane, 1, 0);
         gridPane.addRow(1, vBox, actionButton);
@@ -114,8 +117,11 @@ public class EntryPoint extends Application {
      */
     private void replaceFile(final MarkedFile file) {
         final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
-        if (FILES.contains(file)) {
-            FILES.set(FILES.indexOf(file), file);
+        final int index = FILES.indexOf(file);
+        if (index >= 0) {
+            if (!file.toTextFlow().equals(FILES.get(index).toTextFlow())) {
+                FILES.set(FILES.indexOf(file), file);
+            }
         } else {
             FILES.add(file);
         }

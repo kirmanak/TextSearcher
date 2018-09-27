@@ -1,5 +1,7 @@
 package kirmanak.TextSearcher;
 
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -10,10 +12,8 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Represents a marked file: file and list of marked sub-strings.
@@ -75,5 +75,26 @@ public class MarkedFile {
         }
         markups.trimToSize();
         return log.traceExit(entryMessage, markups);
+    }
+
+    /**
+     * Creates a TextFlow out of the MarkedFile
+     *
+     * @return a TextFlow with highlighted text
+     */
+    public TextFlow toTextFlow() {
+        final List<Text> textList = new ArrayList<>(lines.size() * 2);
+        final Map<Integer, List<Markup>> markupsPerLine = markups.stream()
+                .collect(Collectors.groupingBy(Markup::getLineNumber, Collectors.toList()));
+        for (int i = 0; i < lines.size(); i++) {
+            if (markupsPerLine.containsKey(i)) {
+                continue;
+            }
+            textList.add(new Text(String.format("%s%n", lines.get(i))));
+        }
+        markupsPerLine.forEach((line, list) -> {
+
+        });
+        return new TextFlow(textList.toArray(new Text[0]));
     }
 }

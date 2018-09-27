@@ -5,9 +5,9 @@ import javafx.event.ActionEvent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
@@ -25,7 +25,7 @@ public class EntryPoint extends Application {
     private final TextField PATH_FIELD = new TextField();
     private final TextField TEXT_FIELD = new TextField();
     private final TextField EXTENSION_FIELD = new TextField();
-    private final TextArea AREA = new TextArea();
+    private final Text TEXT = new Text();
 
     public static void main(String[] args) {
         launch();
@@ -36,7 +36,7 @@ public class EntryPoint extends Application {
         final Button actionButton = new Button("Search");
         actionButton.setOnAction(this::onSearchRequest);
         final GridPane gridPane = new GridPane();
-        gridPane.addRow(0, AREA);
+        gridPane.addRow(0, TEXT);
         gridPane.addRow(1, new Label("Path:"), PATH_FIELD);
         gridPane.addRow(2, new Label("Extension:"), EXTENSION_FIELD);
         gridPane.addRow(3, new Label("Text:"), TEXT_FIELD);
@@ -120,7 +120,7 @@ public class EntryPoint extends Application {
             final MarkedFile file = files.get(0);
             final StringBuilder builder = new StringBuilder();
             file.getLines().forEach(builder::append);
-            AREA.setText(builder.toString());
+            TEXT.setText(builder.toString());
         }
         log.traceExit(entryMessage);
     }

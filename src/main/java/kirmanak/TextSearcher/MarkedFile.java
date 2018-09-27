@@ -1,8 +1,7 @@
 package kirmanak.TextSearcher;
 
 import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
-import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
@@ -10,18 +9,31 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Represents a marked file: file and list of marked sub-strings.
  */
 @Log4j2
-@RequiredArgsConstructor
+@Getter
 public class MarkedFile {
     private final Path path;
     private final Collection<Markup> markups;
     private final List<String> lines;
-    private List<Text> textList = null;
+    private final Text[] texts;
+
+    public MarkedFile(final Path path, final Collection<Markup> markups, final List<String> lines) {
+        final EntryMessage entryMessage = log.traceEntry(
+                "MarkedFile(path = {}, markups = {}, lines = {})", path, markups, lines
+        );
+        this.path = path;
+        this.markups = markups;
+        this.lines = lines;
+        texts = generateTexts().toArray(new Text[0]);
+        log.traceExit(entryMessage);
+    }
 
     /**
      * Marks the passed file if the required text is present
@@ -35,64 +47,61 @@ public class MarkedFile {
         if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
             return log.traceExit(entryMessage, Optional.empty());
         }
-        final List<String> lines;
-        try {
-            lines = Files.readAllLines(path);
+        try (final Stream<String> linesStream = Files.lines(path)) {
+            return log.traceExit(entryMessage, markup(path, linesStream, text));
         } catch (final IOException err) {
             log.error(entryMessage, err);
             return log.traceExit(entryMessage, Optional.empty());
         }
-        final Collection<Markup> markups = markup(lines, text);
+    }
+
+    /**
+     * Creates markup for the given strings
+     *
+     * @param linesStream the given strings
+     * @param text        the text to search
+     * @return a set of markups
+     */
+    private static Optional<MarkedFile> markup(final Path path, final Stream<String> linesStream, final String text) {
+        final EntryMessage entryMessage = log.traceEntry(
+                "markup(path = {}, linesStream = {}, text = {})", path, linesStream, text
+        );
+        final ArrayList<Markup> markups = new ArrayList<>();
+        final int length = text.length();
+        final AtomicInteger lineNumber = new AtomicInteger(0);
+        final List<String> lines = linesStream.peek((line) -> {
+            int rangeStart = line.indexOf(text);
+            while (rangeStart >= 0) {
+                markups.add(new Markup(lineNumber.get(), rangeStart, length));
+                rangeStart = line.indexOf(text, rangeStart + 1);
+            }
+            lineNumber.incrementAndGet();
+        }).collect(Collectors.toList());
+        markups.trimToSize();
         return log.traceExit(
                 entryMessage, markups.isEmpty() ? Optional.empty() : Optional.of(new MarkedFile(path, markups, lines))
         );
     }
 
     /**
-     * Creates markup for the given strings
+     * Generates list of Text instances containing the found file highlighted content
      *
-     * @param lines the given strings
-     * @param text  the text to search
-     * @return a set of markups
+     * @return list of the texts
      */
-    private static Collection<Markup> markup(final Collection<String> lines, final String text) {
-        final EntryMessage entryMessage = log.traceEntry("markup(lines = {}, text = {})", lines, text);
-        final ArrayList<Markup> markups = new ArrayList<>(lines.size());
-        final int length = text.length();
-        int lineNumber = 0;
-        for (final String line : lines) {
-            int rangeStart = line.indexOf(text);
-            while (rangeStart >= 0) {
-                markups.add(new Markup(lineNumber, rangeStart, length));
-                rangeStart = line.indexOf(text, rangeStart + 1);
-            }
-            lineNumber++;
-        }
-        markups.trimToSize();
-        return log.traceExit(entryMessage, markups);
-    }
-
-    /**
-     * Creates a TextFlow out of the MarkedFile
-     *
-     * @return a TextFlow with highlighted text
-     */
-    public TextFlow toTextFlow() {
-        final EntryMessage entryMessage = log.traceEntry("getTextFlow() of {}", this);
-        if (textList == null) {
-            textList = new ArrayList<>(lines.size() * 2);
-            final Map<Integer, List<Markup>> markupsPerLine = markups.stream()
-                    .collect(Collectors.groupingBy(Markup::getLineNumber, Collectors.toList()));
-            for (int i = 0; i < lines.size(); i++) {
-                final String line = lines.get(i).concat("\n");
-                if (markupsPerLine.containsKey(i)) {
-                    textList.addAll(textsFromLine(line, markupsPerLine.get(i)));
-                } else {
-                    textList.add(new Text(line));
-                }
+    private List<Text> generateTexts() {
+        final EntryMessage entryMessage = log.traceEntry("generateTexts() of {}", this);
+        final List<Text> textList = new ArrayList<>(lines.size() * 2);
+        final Map<Integer, List<Markup>> markupsPerLine = markups.stream()
+                .collect(Collectors.groupingBy(Markup::getLineNumber, Collectors.toList()));
+        for (int i = 0; i < lines.size(); i++) {
+            final String line = lines.get(i).concat("\n");
+            if (markupsPerLine.containsKey(i)) {
+                textList.addAll(textsFromLine(line, markupsPerLine.get(i)));
+            } else {
+                textList.add(new Text(line));
             }
         }
-        return log.traceExit(entryMessage, new TextFlow(textList.toArray(new Text[0])));
+        return log.traceExit(entryMessage, textList);
     }
 
     /**
@@ -147,9 +156,5 @@ public class MarkedFile {
     @Override
     public String toString() {
         return getPath().toString();
-    }
-
-    public Path getPath() {
-        return path;
     }
 }

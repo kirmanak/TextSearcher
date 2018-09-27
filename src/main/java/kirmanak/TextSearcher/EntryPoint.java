@@ -2,6 +2,7 @@ package kirmanak.TextSearcher;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -18,6 +19,7 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 @Log4j2
 public class EntryPoint extends Application {
@@ -27,7 +29,6 @@ public class EntryPoint extends Application {
     private final TextField TEXT_FIELD = new TextField("error");
     private final TextField EXTENSION_FIELD = new TextField("log");
     private final TextFlow TEXT_FLOW = new TextFlow();
-    private final ListView<MarkedFile> listView = new ListView<>();
 
     public static void main(String[] args) {
         launch();
@@ -57,19 +58,35 @@ public class EntryPoint extends Application {
         );
         final ScrollPane textScrollPane = new ScrollPane(TEXT_FLOW);
         final GridPane gridPane = new GridPane();
+        final ListView<MarkedFile> listView = new ListView<>();
         listView.setItems(FILES);
         listView.setMinWidth(300);
-        listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue.equals(oldValue)) {
-                return;
-            }
-            Platform.runLater(() -> TEXT_FLOW.getChildren().setAll(newValue.toTextFlow().getChildrenUnmodifiable()));
-        });
+        listView.getSelectionModel().selectedItemProperty().addListener(this::selectionListener);
         gridPane.add(listView, 0, 0);
         gridPane.add(textScrollPane, 1, 0);
         gridPane.addRow(1, vBox, actionButton);
         final Scene scene = new Scene(gridPane, 1366, 768);
         return log.traceExit(entryMessage, scene);
+    }
+
+    /**
+     * Called when a new item is selected in the listView
+     *
+     * @param observable the modified value
+     * @param oldValue   the previously selected item
+     * @param newValue   the new selected item
+     */
+    private void selectionListener(
+            final ObservableValue<? extends MarkedFile> observable,
+            final MarkedFile oldValue,
+            final MarkedFile newValue) {
+        if (newValue.equals(oldValue)) {
+            return;
+        }
+        Platform.runLater(() -> {
+            final TextFlow newFlow = new TextFlow(newValue.getTexts());
+            TEXT_FLOW.getChildren().setAll(newFlow.getChildren());
+        });
     }
 
     /**
@@ -119,8 +136,8 @@ public class EntryPoint extends Application {
         final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
         final int index = FILES.indexOf(file);
         if (index >= 0) {
-            if (!file.toTextFlow().equals(FILES.get(index).toTextFlow())) {
-                FILES.set(FILES.indexOf(file), file);
+            if (!Arrays.equals(file.getTexts(), FILES.get(index).getTexts())) {
+                FILES.set(index, file);
             }
         } else {
             FILES.add(file);

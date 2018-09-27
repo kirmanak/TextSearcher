@@ -5,16 +5,14 @@ import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
+import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 @Getter
 @Log4j2
@@ -54,16 +52,15 @@ public class TextSearcher {
      *
      * @return a collection containing all files with the required extension and the required text
      */
-    public Future<List<Future<Optional<MarkedFile>>>> getFiles() {
-        final EntryMessage entryMessage = log.traceEntry("getFiles() of {}", this);
-        final ExecutorService executorService = Executors.newWorkStealingPool();
-        final Future<List<Future<Optional<MarkedFile>>>> result = executorService.submit(() ->
-                Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
-                        .map(path -> (Callable<Optional<MarkedFile>>) () -> MarkedFile.of(path, getText()))
-                        .map(executorService::submit)
-                        .collect(Collectors.toList())
+    public void search(final Consumer<MarkedFile> callBack) throws IOException {
+        final EntryMessage entryMessage = log.traceEntry("search(callBack = {}) of {}", callBack, this);
+        final Stream<Path> paths = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
+        ForkJoinPool.commonPool().execute(() -> paths.map(path -> (Runnable) () -> {
+                    final Optional<MarkedFile> optional = MarkedFile.of(path, getText());
+                    optional.ifPresent(callBack);
+                }).forEach(runnable -> ForkJoinPool.commonPool().execute(runnable))
         );
 
-        return log.traceExit(entryMessage, result);
+        log.traceExit(entryMessage);
     }
 }

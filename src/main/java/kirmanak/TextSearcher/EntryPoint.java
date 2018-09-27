@@ -12,13 +12,8 @@ import javafx.stage.Stage;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
+import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 @Log4j2
 public class EntryPoint extends Application {
@@ -78,50 +73,24 @@ public class EntryPoint extends Application {
      */
     private void search(final TextSearcher searcher) {
         final EntryMessage entryMessage = log.traceEntry("search(searcher = {}) of {}", searcher, this);
-        final Future<List<Future<Optional<MarkedFile>>>> markedFiles = searcher.getFiles();
-        CompletableFuture.runAsync(() -> {
-            try {
-                showFiles(unwrapFiles(markedFiles));
-            } catch (final InterruptedException err) {
-                log.error(entryMessage, err);
-                Thread.currentThread().interrupt();
-            } catch (final ExecutionException err) {
-                log.error(entryMessage, err);
-            }
-        });
+        try {
+            searcher.search(this::showFile);
+        } catch (final IOException e) {
+            log.error(entryMessage, e);
+        }
         log.traceExit(entryMessage);
     }
 
     /**
-     * Unwraps futures
+     * Shows the content of found file in the GUI
      *
-     * @param future Future containing all found files
+     * @param file file to show
      */
-    private List<MarkedFile> unwrapFiles(final Future<List<Future<Optional<MarkedFile>>>> future)
-            throws ExecutionException, InterruptedException {
-        final EntryMessage entryMessage = log.traceEntry("unwrapFiles(future = {}) of {}", future, this);
-        final List<MarkedFile> list = new ArrayList<>();
-        for (final Future<Optional<MarkedFile>> optionalFuture : future.get()) {
-            final Optional<MarkedFile> file = optionalFuture.get();
-            file.ifPresent(list::add);
-        }
-
-        return log.traceExit(entryMessage, list);
-    }
-
-    /**
-     * Shows the content of found files in the GUI
-     *
-     * @param files files to show
-     */
-    private void showFiles(final List<MarkedFile> files) {
-        final EntryMessage entryMessage = log.traceEntry("showFiles(files = {}) of {}", files, this);
-        if (files.size() > 0) {
-            final MarkedFile file = files.get(0);
-            final StringBuilder builder = new StringBuilder();
-            file.getLines().stream().map((line) -> String.format("%s%n", line)).forEach(builder::append);
-            TEXT.setText(builder.toString());
-        }
+    private void showFile(final MarkedFile file) {
+        final EntryMessage entryMessage = log.traceEntry("showFiles(file = {}) of {}", file, this);
+        final StringBuilder builder = new StringBuilder();
+        file.getLines().stream().map((line) -> String.format("%s%n", line)).forEach(builder::append);
+        TEXT.setText(builder.toString());
         log.traceExit(entryMessage);
     }
 }

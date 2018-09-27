@@ -83,18 +83,27 @@ public class MarkedFile {
      * @return a TextFlow with highlighted text
      */
     public TextFlow toTextFlow() {
+        final EntryMessage entryMessage = log.traceEntry("toTextFlow() of {}", this);
         final List<Text> textList = new ArrayList<>(lines.size() * 2);
         final Map<Integer, List<Markup>> markupsPerLine = markups.stream()
                 .collect(Collectors.groupingBy(Markup::getLineNumber, Collectors.toList()));
         for (int i = 0; i < lines.size(); i++) {
+            final String line = String.format("%s%n", lines.get(i));
             if (markupsPerLine.containsKey(i)) {
-                continue;
+                final List<Markup> markups = markupsPerLine.get(i);
+                textList.add(markups.get(0).toText(line));
+                for (int j = 1; j < markups.size(); j++) {
+                    final Markup current = markups.get(j);
+                    final Markup previous = markups.get(j - 1);
+                    textList.add(current.toText(line));
+                    if (current.getRangeStart() > previous.getRangeEnd()) {
+                        textList.add(new Text(line.substring(previous.getRangeEnd(), current.getRangeStart())));
+                    }
+                }
+            } else {
+                textList.add(new Text(line));
             }
-            textList.add(new Text(String.format("%s%n", lines.get(i))));
         }
-        markupsPerLine.forEach((line, list) -> {
-
-        });
-        return new TextFlow(textList.toArray(new Text[0]));
+        return log.traceExit(entryMessage, new TextFlow(textList.toArray(new Text[0])));
     }
 }

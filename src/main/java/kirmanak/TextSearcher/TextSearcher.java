@@ -38,8 +38,8 @@ public class TextSearcher {
             log.error(entryMessage, err);
             throw err;
         }
-        if (extension.contains(".")) {
-            final IllegalArgumentException err = new IllegalArgumentException("Extension must not contain a dot.");
+        if (extension.isEmpty() || extension.contains(".")) {
+            final IllegalArgumentException err = new IllegalArgumentException("Extension is incorrect.");
             log.error(entryMessage, err);
             throw err;
         }

@@ -109,14 +109,17 @@ public class EntryPoint extends Application {
         return log.traceExit(entryMessage, list);
     }
 
+    /**
+     * Shows the content of found files in the GUI
+     *
+     * @param files files to show
+     */
     private void showFiles(final List<MarkedFile> files) {
         final EntryMessage entryMessage = log.traceEntry("showFiles(files = {}) of {}", files, this);
         if (files.size() > 0) {
             final MarkedFile file = files.get(0);
             final StringBuilder builder = new StringBuilder();
-            for (final String line : file.getLines()) {
-                builder.append(line);
-            }
+            file.getLines().forEach(builder::append);
             AREA.setText(builder.toString());
         }
         log.traceExit(entryMessage);

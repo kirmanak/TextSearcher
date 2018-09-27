@@ -11,7 +11,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
@@ -19,16 +18,15 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 @Log4j2
 public class EntryPoint extends Application {
-    private final ObservableList<MarkedFile> FILES =
+    private final ObservableList<FoundFile> FILES =
             FXCollections.synchronizedObservableList(FXCollections.observableList(new ArrayList<>()));
     private final TextField PATH_FIELD = new TextField("/home/kirmanak/logs");
     private final TextField TEXT_FIELD = new TextField("error");
     private final TextField EXTENSION_FIELD = new TextField("log");
-    private final TextFlow TEXT_FLOW = new TextFlow();
+    private final TextArea TEXT_AREA = new TextArea();
 
     public static void main(String[] args) {
         launch();
@@ -56,14 +54,14 @@ public class EntryPoint extends Application {
                 new HBox(new Label("Extension: "), EXTENSION_FIELD),
                 new HBox(new Label("Text: "), TEXT_FIELD)
         );
-        final ScrollPane textScrollPane = new ScrollPane(TEXT_FLOW);
         final GridPane gridPane = new GridPane();
-        final ListView<MarkedFile> listView = new ListView<>();
+        final ListView<FoundFile> listView = new ListView<>();
         listView.setItems(FILES);
         listView.setMinWidth(300);
         listView.getSelectionModel().selectedItemProperty().addListener(this::selectionListener);
         gridPane.add(listView, 0, 0);
-        gridPane.add(textScrollPane, 1, 0);
+        TEXT_AREA.setEditable(false);
+        gridPane.add(TEXT_AREA, 1, 0);
         gridPane.addRow(1, vBox, actionButton);
         final Scene scene = new Scene(gridPane, 1366, 768);
         return log.traceExit(entryMessage, scene);
@@ -77,16 +75,14 @@ public class EntryPoint extends Application {
      * @param newValue   the new selected item
      */
     private void selectionListener(
-            final ObservableValue<? extends MarkedFile> observable,
-            final MarkedFile oldValue,
-            final MarkedFile newValue) {
-        if (newValue.equals(oldValue)) {
-            return;
-        }
-        Platform.runLater(() -> {
-            final TextFlow newFlow = new TextFlow(newValue.getTexts());
-            TEXT_FLOW.getChildren().setAll(newFlow.getChildren());
-        });
+            final ObservableValue<? extends FoundFile> observable,
+            final FoundFile oldValue,
+            final FoundFile newValue) {
+        final EntryMessage m = log.traceEntry(
+                "selectionListener(observable = {}, oldValue = {}, newValue = {})", observable, oldValue, newValue
+        );
+        Platform.runLater(() -> TEXT_AREA.setText(newValue.getContent()));
+        log.traceExit(m);
     }
 
     /**
@@ -132,16 +128,16 @@ public class EntryPoint extends Application {
      *
      * @param file the file to be inserted
      */
-    private void replaceFile(final MarkedFile file) {
+    private void replaceFile(final FoundFile file) {
         final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
         final int index = FILES.indexOf(file);
-        if (index >= 0) {
-            if (!Arrays.equals(file.getTexts(), FILES.get(index).getTexts())) {
+        Platform.runLater(() -> {
+            if (index >= 0) {
                 FILES.set(index, file);
+            } else {
+                FILES.add(file);
             }
-        } else {
-            FILES.add(file);
-        }
+        });
         log.traceExit(entryMessage);
     }
 }

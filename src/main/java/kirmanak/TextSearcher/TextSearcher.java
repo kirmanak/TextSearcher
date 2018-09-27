@@ -42,7 +42,7 @@ public class TextSearcher {
             throw err;
         }
         this.rootFolder = rootFolder.normalize();
-        this.extension = extension;
+        this.extension = String.format(".%s", extension);
         this.text = text;
         log.traceExit(entryMessage);
     }
@@ -52,11 +52,13 @@ public class TextSearcher {
      *
      * @return a collection containing all files with the required extension and the required text
      */
-    public void search(final Consumer<MarkedFile> callBack) throws IOException {
+    public void search(final Consumer<FoundFile> callBack) throws IOException {
         final EntryMessage entryMessage = log.traceEntry("search(callBack = {}) of {}", callBack, this);
         final Stream<Path> paths = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
-        ForkJoinPool.commonPool().execute(() -> paths.map(path -> (Runnable) () -> {
-                    final Optional<MarkedFile> optional = MarkedFile.of(path, getText());
+        ForkJoinPool.commonPool().execute(() -> paths
+                .filter(path -> path.toString().endsWith(getExtension()))
+                .map(path -> (Runnable) () -> {
+                    final Optional<FoundFile> optional = FoundFile.of(path, getText());
                     optional.ifPresent(callBack);
                 }).forEach(runnable -> ForkJoinPool.commonPool().execute(runnable))
         );

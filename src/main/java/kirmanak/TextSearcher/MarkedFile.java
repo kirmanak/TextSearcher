@@ -61,7 +61,7 @@ public class MarkedFile {
      * @return a set of markups
      */
     private static Collection<Markup> markup(final Collection<String> lines, final String text) {
-        final EntryMessage entryMessage = log.traceEntry("markup(path = {}, text = {})", lines, text);
+        final EntryMessage entryMessage = log.traceEntry("markup(lines = {}, text = {})", lines, text);
         final ArrayList<Markup> markups = new ArrayList<>(lines.size());
         final int length = text.length();
         int lineNumber = 0;

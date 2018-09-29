@@ -1,5 +1,6 @@
 package kirmanak.TextSearcher;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
@@ -16,6 +17,7 @@ import java.util.stream.Stream;
 @Getter
 @Log4j2
 @ToString
+@EqualsAndHashCode
 public class TextSearcher {
     private final Path rootFolder;
     private final String extension;

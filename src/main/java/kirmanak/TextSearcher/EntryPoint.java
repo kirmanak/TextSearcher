@@ -22,8 +22,9 @@ import java.util.LinkedList;
 
 @Log4j2
 public class EntryPoint extends Application {
-    private final ObservableList<FoundFile> FILES =
-            FXCollections.synchronizedObservableList(FXCollections.observableList(new LinkedList<>()));
+    private final ObservableList<FoundFile> FILES = FXCollections.synchronizedObservableList(
+            FXCollections.observableList(new LinkedList<>())
+    );
     private final TextField PATH_FIELD = new TextField("/home/kirmanak/logs");
     private final TextField TEXT_FIELD = new TextField("error");
     private final TextField EXTENSION_FIELD = new TextField("log");

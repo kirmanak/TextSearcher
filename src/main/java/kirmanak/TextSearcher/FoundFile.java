@@ -42,10 +42,15 @@ public class FoundFile {
         }
     }
 
-    private static Optional<FoundFile> check(
-            final Path path,
-            final Stream<String> linesStream,
-            final String text) {
+    /**
+     * Checks whether the provided stream contains the provided text. If yes, creates a FoundFile instance
+     *
+     * @param path        the path to the file containing the provided stream
+     * @param linesStream the lines stream containing lines to be checked
+     * @param text        the text to be found in the stream
+     * @return empty if an error has happened or the file does not contain the text
+     */
+    private static Optional<FoundFile> check(final Path path, final Stream<String> linesStream, final String text) {
         final EntryMessage m = log.traceEntry("check(path = {}, linesStream = {}, text = {})", path, linesStream, text);
         final Iterator<String> linesIterator = linesStream.iterator();
         final StringBuilder stringBuilder = new StringBuilder();
@@ -53,9 +58,7 @@ public class FoundFile {
             final String line = linesIterator.next();
             stringBuilder.append(line).append("\n");
             if (line.contains(text)) {
-                while (linesIterator.hasNext()) {
-                    stringBuilder.append(linesIterator.next()).append("\n");
-                }
+                linesIterator.forEachRemaining(string -> stringBuilder.append(string).append("\n"));
                 return log.traceExit(m, Optional.of(new FoundFile(path, stringBuilder.toString())));
             }
         }

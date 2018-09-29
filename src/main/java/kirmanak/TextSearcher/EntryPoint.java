@@ -16,10 +16,9 @@ import javafx.stage.Stage;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
-import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 
 @Log4j2
 public class EntryPoint extends Application {
@@ -90,7 +89,7 @@ public class EntryPoint extends Application {
     }
 
     /**
-     * Initializes a TextSearcher and passes it to performSearch()
+     * Initializes a TextSearchService and passes it to performSearch()
      *
      * @param actionEvent the event which has requested search
      * @throws IllegalArgumentException if an error is happened during the initialization
@@ -101,47 +100,15 @@ public class EntryPoint extends Application {
         final String path = PATH_FIELD.getText();
         final String extension = EXTENSION_FIELD.getText();
         final String text = TEXT_FIELD.getText();
-        final TextSearcher textSearcher;
+        final TextSearchService service;
         try {
-            textSearcher = new TextSearcher(Paths.get(path), extension, text);
+            service = new TextSearchService(Paths.get(path), extension, text);
         } catch (final IllegalArgumentException err) {
             log.error(entryMessage, err);
             return;
         }
-        search(textSearcher);
-        log.traceExit(entryMessage);
-    }
-
-    /**
-     * Performs the search and passes the result if any to unwrapFiles()
-     *
-     * @param searcher initialized TextSearcher instance
-     */
-    private void search(final TextSearcher searcher) {
-        final EntryMessage entryMessage = log.traceEntry("search(searcher = {}) of {}", searcher, this);
-        try {
-            searcher.search(this::replaceFile);
-        } catch (final IOException e) {
-            log.error(entryMessage, e);
-        }
-        log.traceExit(entryMessage);
-    }
-
-    /**
-     * Inserts a file to the collection. Replaces if it is present already
-     *
-     * @param file the file to be inserted
-     */
-    private void replaceFile(final MarkedFile file) {
-        final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
-        final int index = FILES.indexOf(file);
-        if (index >= 0) {
-            if (!Arrays.equals(file.getTexts(), FILES.get(index).getTexts())) {
-                FILES.set(index, file);
-            }
-        } else {
-            FILES.add(file);
-        }
+        service.setOnSucceeded(stateEvent -> FILES.setAll((List<MarkedFile>) stateEvent.getSource().getValue()));
+        service.start();
         log.traceExit(entryMessage);
     }
 }

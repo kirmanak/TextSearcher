@@ -57,11 +57,13 @@ public class TextSearchService extends Service<List<MarkedFile>> {
             protected List<MarkedFile> call() throws InterruptedException, ExecutionException, IOException {
                 final EntryMessage m = log.traceEntry("call() of {}", this);
                 final ExecutorService executorService = Executors.newWorkStealingPool();
+                updateMessage("Looking for files...");
                 final List<Future<Optional<MarkedFile>>> futures =
                         Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
                                 .map(path -> (Callable<Optional<MarkedFile>>) () -> MarkedFile.of(path, getText()))
                                 .map(executorService::submit)
                                 .collect(Collectors.toList());
+                updateMessage("Reading files...");
                 final int FILE_COUNT = futures.size();
                 final ArrayList<MarkedFile> result = new ArrayList<>(FILE_COUNT);
                 int counter = 0;
@@ -71,6 +73,7 @@ public class TextSearchService extends Service<List<MarkedFile>> {
                     updateProgress(counter, FILE_COUNT);
                 }
                 result.trimToSize();
+                updateMessage("Done");
                 return log.traceExit(m, result);
             }
         };

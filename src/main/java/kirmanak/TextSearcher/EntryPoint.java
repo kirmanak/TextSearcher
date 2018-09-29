@@ -28,6 +28,7 @@ public class EntryPoint extends Application {
     private final TextField TEXT_FIELD = new TextField("error");
     private final TextField EXTENSION_FIELD = new TextField("log");
     private final TextFlow TEXT_FLOW = new TextFlow();
+    private final Button ACTION_BUTTON = new Button("Search");
 
     public static void main(String[] args) {
         launch();
@@ -48,8 +49,7 @@ public class EntryPoint extends Application {
      */
     private Scene constructScene() {
         final EntryMessage entryMessage = log.traceEntry("constructScene() of {}", this);
-        final Button actionButton = new Button("Search");
-        actionButton.setOnAction(this::onSearchRequest);
+        ACTION_BUTTON.setOnAction(this::onSearchRequest);
         final VBox vBox = new VBox(
                 new HBox(new Label("Path: "), PATH_FIELD),
                 new HBox(new Label("Extension: "), EXTENSION_FIELD),
@@ -63,7 +63,7 @@ public class EntryPoint extends Application {
         listView.getSelectionModel().selectedItemProperty().addListener(this::selectionListener);
         gridPane.add(listView, 0, 0);
         gridPane.add(textScrollPane, 1, 0);
-        gridPane.addRow(1, vBox, actionButton);
+        gridPane.addRow(1, vBox, ACTION_BUTTON);
         final Scene scene = new Scene(gridPane, 1366, 768);
         return log.traceExit(entryMessage, scene);
     }
@@ -109,6 +109,7 @@ public class EntryPoint extends Application {
         }
         service.setOnSucceeded(stateEvent -> FILES.setAll((List<MarkedFile>) stateEvent.getSource().getValue()));
         service.start();
+        ACTION_BUTTON.textProperty().bind(service.messageProperty());
         log.traceExit(entryMessage);
     }
 }

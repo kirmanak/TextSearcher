@@ -30,9 +30,13 @@ public class TextSearcher {
      * @param text       Text to search
      */
     public TextSearcher(final Path rootFolder, final String extension, final String text) throws IllegalArgumentException {
-        final EntryMessage entryMessage = log.traceEntry("TextSearcher(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text);
+        final EntryMessage entryMessage = log.traceEntry(
+                "TextSearcher(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text
+        );
         if (!rootFolder.toFile().isDirectory() || !rootFolder.toFile().canExecute()) {
-            final IllegalArgumentException err = new IllegalArgumentException("Root folder must be a executable directory.");
+            final IllegalArgumentException err = new IllegalArgumentException(
+                    "Root folder must be a executable directory."
+            );
             log.error(entryMessage, err);
             throw err;
         }
@@ -55,14 +59,28 @@ public class TextSearcher {
     public void search(final Consumer<FoundFile> callBack) throws IOException {
         final EntryMessage entryMessage = log.traceEntry("search(callBack = {}) of {}", callBack, this);
         final Stream<Path> paths = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
-        ForkJoinPool.commonPool().execute(() -> paths
-                .filter(path -> path.toString().endsWith(getExtension()))
-                .map(path -> (Runnable) () -> {
-                    final Optional<FoundFile> optional = FoundFile.of(path, getText());
-                    optional.ifPresent(callBack);
-                }).forEach(runnable -> ForkJoinPool.commonPool().execute(runnable))
+        final ForkJoinPool pool = ForkJoinPool.commonPool();
+        pool.execute(() ->
+                paths.filter(path -> path.toString().endsWith(getExtension()))
+                        .map(path -> checkFile(path, callBack))
+                        .forEach(pool::execute)
         );
 
         log.traceExit(entryMessage);
+    }
+
+    /**
+     * Creates a Runnable which checks the file and calls a callback if the file contains the text
+     *
+     * @param path     the path to the file
+     * @param callBack the callBack to be called if the file contains the required text
+     * @return the created Runnable instance
+     */
+    private Runnable checkFile(final Path path, final Consumer<FoundFile> callBack) {
+        final EntryMessage entryMessage = log.traceEntry("checkFile(path = {}, callBack = {})", path, callBack);
+        return log.traceExit(entryMessage, () -> {
+            final Optional<FoundFile> optional = FoundFile.of(path, getText());
+            optional.ifPresent(callBack);
+        });
     }
 }

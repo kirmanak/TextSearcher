@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -78,9 +77,6 @@ public class TextSearcher {
      */
     private Runnable checkFile(final Path path, final Consumer<FoundFile> callBack) {
         final EntryMessage entryMessage = log.traceEntry("checkFile(path = {}, callBack = {})", path, callBack);
-        return log.traceExit(entryMessage, () -> {
-            final Optional<FoundFile> optional = FoundFile.of(path, getText());
-            optional.ifPresent(callBack);
-        });
+        return log.traceExit(entryMessage, () -> FoundFile.of(path, getText()).ifPresent(callBack));
     }
 }

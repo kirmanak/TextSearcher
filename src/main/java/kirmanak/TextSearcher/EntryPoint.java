@@ -16,9 +16,7 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.LinkedList;
 
 @Log4j2
@@ -132,16 +130,13 @@ public class EntryPoint extends Application {
      */
     private void replaceFile(final FoundFile file) {
         final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
-        final Path pathToBeCompared = file.getPath();
+        final int index = FILES.indexOf(file);
         Platform.runLater(() -> {
-            final Iterator<FoundFile> iterator = FILES.iterator();
-            while (iterator.hasNext()) {
-                if (iterator.next().getPath().equals(pathToBeCompared)) {
-                    iterator.remove();
-                    break;
-                }
+            if (index >= 0) {
+                FILES.set(index, file);
+            } else {
+                FILES.add(file);
             }
-            FILES.add(file);
         });
         log.traceExit(entryMessage);
     }

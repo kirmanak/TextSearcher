@@ -63,6 +63,16 @@ public class FoundFile {
     }
 
     @Override
+    public int hashCode() {
+        return getPath().hashCode();
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        return obj instanceof FoundFile && getPath().equals(((FoundFile) obj).getPath());
+    }
+
+    @Override
     public String toString() {
         return getPath().toString();
     }

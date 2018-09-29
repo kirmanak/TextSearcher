@@ -16,13 +16,15 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 
 @Log4j2
 public class EntryPoint extends Application {
     private final ObservableList<FoundFile> FILES =
-            FXCollections.synchronizedObservableList(FXCollections.observableList(new ArrayList<>()));
+            FXCollections.synchronizedObservableList(FXCollections.observableList(new LinkedList<>()));
     private final TextField PATH_FIELD = new TextField("/home/kirmanak/logs");
     private final TextField TEXT_FIELD = new TextField("error");
     private final TextField EXTENSION_FIELD = new TextField("log");
@@ -130,13 +132,16 @@ public class EntryPoint extends Application {
      */
     private void replaceFile(final FoundFile file) {
         final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
-        final int index = FILES.indexOf(file);
+        final Path pathToBeCompared = file.getPath();
         Platform.runLater(() -> {
-            if (index >= 0) {
-                FILES.set(index, file);
-            } else {
-                FILES.add(file);
+            final Iterator<FoundFile> iterator = FILES.iterator();
+            while (iterator.hasNext()) {
+                if (iterator.next().getPath().equals(pathToBeCompared)) {
+                    iterator.remove();
+                    break;
+                }
             }
+            FILES.add(file);
         });
         log.traceExit(entryMessage);
     }

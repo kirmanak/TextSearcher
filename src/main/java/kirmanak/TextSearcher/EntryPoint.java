@@ -17,6 +17,7 @@ import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 @Log4j2
@@ -81,7 +82,9 @@ public class EntryPoint extends Application {
         final EntryMessage m = log.traceEntry(
                 "selectionListener(observable = {}, oldValue = {}, newValue = {})", observable, oldValue, newValue
         );
-        Platform.runLater(() -> TEXT_AREA.setText(newValue.getContent()));
+        if (newValue != null && !newValue.equals(oldValue)) {
+            Platform.runLater(() -> TEXT_AREA.setText(newValue.getContent()));
+        }
         log.traceExit(m);
     }
 
@@ -130,14 +133,14 @@ public class EntryPoint extends Application {
      */
     private void replaceFile(final FoundFile file) {
         final EntryMessage entryMessage = log.traceEntry("replaceFile(file = {}) of {}", file, this);
-        final int index = FILES.indexOf(file);
-        Platform.runLater(() -> {
-            if (index >= 0) {
-                FILES.set(index, file);
-            } else {
-                FILES.add(file);
+        final Iterator<FoundFile> iterator = FILES.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().equals(file)) {
+                Platform.runLater(iterator::remove);
+                break;
             }
-        });
+        }
+        Platform.runLater(() -> FILES.add(file));
         log.traceExit(entryMessage);
     }
 }

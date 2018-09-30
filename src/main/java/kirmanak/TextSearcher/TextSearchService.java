@@ -43,7 +43,7 @@ public class TextSearchService extends Service<List<Path>> {
             throw new IllegalArgumentException("Extension is incorrect.");
         }
         this.rootFolder = rootFolder.normalize();
-        this.extension = extension;
+        this.extension = String.format(".%s", extension);
         this.text = text;
         log.traceExit(entryMessage);
     }
@@ -51,10 +51,6 @@ public class TextSearchService extends Service<List<Path>> {
     @Override
     protected Task<List<Path>> createTask() {
         return new TextSearchTask(getRootFolder(), getExtension(), getText());
-    }
-
-    public String getExtension() {
-        return String.format(".%s", extension);
     }
 
     @RequiredArgsConstructor

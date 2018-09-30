@@ -36,15 +36,11 @@ public class TextSearchService extends Service<List<Path>> {
         final EntryMessage entryMessage = log.traceEntry(
                 "TextSearchService(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text
         );
-        if (!rootFolder.toFile().isDirectory() || !rootFolder.toFile().canExecute()) {
-            final IllegalArgumentException err = new IllegalArgumentException("Root folder must be a executable directory.");
-            log.error(entryMessage, err);
-            throw err;
+        if (!Files.isDirectory(rootFolder) || !Files.isExecutable(rootFolder)) {
+            throw new IllegalArgumentException("Root folder must be a executable directory.");
         }
         if (extension.isEmpty() || extension.contains(".")) {
-            final IllegalArgumentException err = new IllegalArgumentException("Extension is incorrect.");
-            log.error(entryMessage, err);
-            throw err;
+            throw new IllegalArgumentException("Extension is incorrect.");
         }
         this.rootFolder = rootFolder.normalize();
         this.extension = extension;

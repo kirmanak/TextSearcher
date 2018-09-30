@@ -7,20 +7,13 @@ import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
-import java.io.IOException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 @Getter
 @Log4j2
 @ToString
-public class TextSearchService extends Service<List<MarkedFile>> {
+public class TextSearchService extends Service<List<Path>> {
     private final Path rootFolder;
     private final String extension;
     private final String text;
@@ -51,31 +44,7 @@ public class TextSearchService extends Service<List<MarkedFile>> {
     }
 
     @Override
-    protected Task<List<MarkedFile>> createTask() {
-        return new Task<List<MarkedFile>>() {
-            @Override
-            protected List<MarkedFile> call() throws InterruptedException, ExecutionException, IOException {
-                final EntryMessage m = log.traceEntry("call() of {}", this);
-                final ExecutorService executorService = Executors.newWorkStealingPool();
-                updateMessage("Looking for files...");
-                final List<Future<Optional<MarkedFile>>> futures =
-                        Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
-                                .map(path -> (Callable<Optional<MarkedFile>>) () -> MarkedFile.of(path, getText()))
-                                .map(executorService::submit)
-                                .collect(Collectors.toList());
-                updateMessage("Reading files...");
-                final int FILE_COUNT = futures.size();
-                final ArrayList<MarkedFile> result = new ArrayList<>(FILE_COUNT);
-                int counter = 0;
-                for (final Future<Optional<MarkedFile>> future : futures) {
-                    future.get().ifPresent(result::add);
-                    counter++;
-                    updateProgress(counter, FILE_COUNT);
-                }
-                result.trimToSize();
-                updateMessage("Done");
-                return log.traceExit(m, result);
-            }
-        };
+    protected Task<List<Path>> createTask() {
+        return new TextSearchTask(getRootFolder(), getExtension(), getText());
     }
 }

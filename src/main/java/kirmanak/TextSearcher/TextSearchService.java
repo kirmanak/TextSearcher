@@ -166,8 +166,10 @@ public class TextSearchService extends Service<List<Path>> {
          */
         private boolean shouldBeChecked(final Path path) {
             final EntryMessage m = log.traceEntry("shouldBeChecked(path = {}) of {}", path, this);
-            final boolean answer =
-                    path.toString().endsWith(getExtension()) && Files.isRegularFile(path) && Files.isReadable(path);
+            final boolean answer = path.toString().endsWith(getExtension())
+                    && Files.exists(path)
+                    && Files.isRegularFile(path)
+                    && Files.isReadable(path);
             return log.traceExit(m, answer);
         }
 

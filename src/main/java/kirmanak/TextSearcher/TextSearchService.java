@@ -12,12 +12,10 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Getter
 @Log4j2
@@ -71,7 +69,7 @@ public class TextSearchService extends Service<List<Path>> {
         private final String text;
 
         @Override
-        protected List<Path> call() throws IOException {
+        protected List<Path> call() {
             final EntryMessage m = log.traceEntry("call() of {}", this);
             updateMessage("Looking for files...");
             final List<Future<Optional<Path>>> futures = walk();
@@ -134,26 +132,57 @@ public class TextSearchService extends Service<List<Path>> {
                 final EntryMessage callableEntryMessage = log.traceEntry(
                         "anonymous(path = {}) of {}", path, this
                 );
-                final boolean result = Files.lines(path).anyMatch(line -> line.contains(getText()));
+                final boolean result;
+                try {
+                    result = Files.lines(path).anyMatch(line -> line.contains(getText()));
+                } catch (final IOException err) {
+                    log.error(m, err);
+                    return log.traceExit(m, Optional.empty());
+                }
                 return log.traceExit(callableEntryMessage, result ? Optional.of(path) : Optional.empty());
             });
+        }
+
+        /**
+         * Iterates over the provided paths creating list of futures
+         *
+         * @param iterator the iterator over the paths
+         * @return list containing futures made out of the paths
+         */
+        private List<Future<Optional<Path>>> iterateThroughFiles(final Iterator<Path> iterator) {
+            final EntryMessage m = log.traceEntry("iterateThroughFiles(iterator = {}) of {}", iterator, this);
+            final ExecutorService executorService = Executors.newWorkStealingPool();
+            final List<Future<Optional<Path>>> result = new LinkedList<>();
+            while (iterator.hasNext()) {
+                final Path current;
+                try {
+                    current = iterator.next();
+                } catch (final Exception err) {
+                    log.error(m, err);
+                    continue;
+                }
+                if (current.toString().endsWith(getExtension())) {
+                    result.add(executorService.submit(pathToCallable(current)));
+                }
+            }
+            return log.traceExit(m, result);
         }
 
         /**
          * Walks through the file system starting from the root path
          *
          * @return list of futures with results of the file reading
-         * @throws IOException if any I/O error has happened
          */
-        private List<Future<Optional<Path>>> walk() throws IOException {
+        private List<Future<Optional<Path>>> walk() {
             final EntryMessage m = log.traceEntry("walk() of {}", this);
-            final ExecutorService executorService = Executors.newWorkStealingPool();
-            return log.traceExit(m, Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
-                    .filter(path -> path.toString().endsWith(getExtension()))
-                    .map(this::pathToCallable)
-                    .map(executorService::submit)
-                    .collect(Collectors.toList())
-            );
+            final Iterator<Path> iterator;
+            try (final Stream<Path> pathStream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)) {
+                iterator = pathStream.iterator();
+            } catch (final IOException err) {
+                log.error(m, err);
+                return log.traceExit(m, Collections.emptyList());
+            }
+            return log.traceExit(m, iterateThroughFiles(iterator));
         }
     }
 }

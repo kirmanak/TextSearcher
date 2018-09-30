@@ -27,7 +27,7 @@ public class MarkedFileService extends Service<TextArea> {
 
     @Getter
     @RequiredArgsConstructor
-    public class MarkedFileTask extends Task<TextArea> {
+    private class MarkedFileTask extends Task<TextArea> {
         private final Path path;
         private final String text;
 

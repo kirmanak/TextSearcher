@@ -35,7 +35,9 @@ public class TextSearchService extends Service<List<Path>> {
      * @param text       Text to search
      */
     public TextSearchService(final Path rootFolder, final String extension, final String text) throws IllegalArgumentException {
-        final EntryMessage entryMessage = log.traceEntry("TextSearchService(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text);
+        final EntryMessage entryMessage = log.traceEntry(
+                "TextSearchService(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text
+        );
         if (!rootFolder.toFile().isDirectory() || !rootFolder.toFile().canExecute()) {
             final IllegalArgumentException err = new IllegalArgumentException("Root folder must be a executable directory.");
             log.error(entryMessage, err);
@@ -127,9 +129,11 @@ public class TextSearchService extends Service<List<Path>> {
          * @return the callable to be executed
          */
         private Callable<Optional<Path>> pathToCallable(final Path path) {
-            final EntryMessage m = log.traceEntry("pathToCallable(path = {})", path);
+            final EntryMessage m = log.traceEntry("pathToCallable(path = {}) of {}", path, this);
             return log.traceExit(m, () -> {
-                final EntryMessage callableEntryMessage = log.traceEntry("anonymous(path = {})", path);
+                final EntryMessage callableEntryMessage = log.traceEntry(
+                        "anonymous(path = {}) of {}", path, this
+                );
                 final boolean result = Files.lines(path).anyMatch(line -> line.contains(getText()));
                 return log.traceExit(callableEntryMessage, result ? Optional.of(path) : Optional.empty());
             });
@@ -148,7 +152,8 @@ public class TextSearchService extends Service<List<Path>> {
                     .filter(path -> path.toString().endsWith(getExtension()))
                     .map(this::pathToCallable)
                     .map(executorService::submit)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList())
+            );
         }
     }
 }

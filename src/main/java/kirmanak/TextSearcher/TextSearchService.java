@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 @Getter
 @Log4j2
 @ToString
-public class TextSearchService extends Service<List<Path>> {
+class TextSearchService extends Service<List<Path>> {
     private final Path rootFolder;
     private final String extension;
     private final String text;

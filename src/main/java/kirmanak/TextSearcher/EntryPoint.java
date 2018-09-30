@@ -118,6 +118,7 @@ public class EntryPoint extends Application {
             log.error(entryMessage, err);
             return;
         }
+        //noinspection unchecked
         service.setOnSucceeded(stateEvent -> FILES.setAll((List<Path>) stateEvent.getSource().getValue()));
         service.start();
         ACTION_BUTTON.textProperty().bind(service.messageProperty());

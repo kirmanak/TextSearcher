@@ -16,7 +16,7 @@ import java.util.Iterator;
 @Log4j2
 @Getter
 @RequiredArgsConstructor
-public class MarkedFileService extends Service<TextArea> {
+class MarkedFileService extends Service<TextArea> {
     private final Path path;
     private final String text;
 
@@ -41,7 +41,7 @@ public class MarkedFileService extends Service<TextArea> {
         /**
          * Creates and configures a TextArea instance
          *
-         * @return
+         * @return an configured TextArea instance
          */
         private TextArea initializeTextArea() {
             final EntryMessage m = log.traceEntry("initializeTextArea() of {}", this);

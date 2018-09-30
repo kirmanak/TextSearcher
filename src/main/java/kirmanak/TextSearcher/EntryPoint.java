@@ -1,31 +1,38 @@
 package kirmanak.TextSearcher;
 
 import javafx.application.Application;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 @Log4j2
 public class EntryPoint extends Application {
-    private final ObservableList<Path> FILES = FXCollections.observableList(new ArrayList<>());
-    private final TextField PATH_FIELD = new TextField("/home/kirmanak/logs");
-    private final TextField TEXT_FIELD = new TextField("error");
-    private final TextField EXTENSION_FIELD = new TextField("log");
-    private final TabPane tabPane = new TabPane();
-    private final Button ACTION_BUTTON = new Button("Search");
+    @FXML
+    private TextField PATH_FIELD;
+    @FXML
+    private TextField EXTENSION_FIELD;
+    @FXML
+    private TextField TEXT_FIELD;
+    @FXML
+    private TabPane TAB_PANE;
+    @FXML
+    private ProgressIndicator PROGRESS_INDICATOR;
+    @FXML
+    private TreeView<Path> TREE_VIEW;
+    private Stage primaryStage;
+    private Path root;
 
     public static void main(String[] args) {
         launch();
@@ -36,44 +43,48 @@ public class EntryPoint extends Application {
      *
      * @param primaryStage the main window
      */
-    public void start(final Stage primaryStage) {
+    public void start(final Stage primaryStage) throws IOException {
         final EntryMessage entryMessage = log.traceEntry("start(primaryStage = {}) of {}", primaryStage, this);
+        final Parent root = FXMLLoader.load(getClass().getResource("/main.fxml"));
+        this.primaryStage = primaryStage;
         primaryStage.setTitle("TextSearcher");
-        primaryStage.setScene(constructScene());
+        primaryStage.setScene(new Scene(root));
         primaryStage.show();
         log.traceExit(entryMessage);
     }
 
-    /**
-     * Constructs the main scene to be displayed
-     *
-     * @return the constructed Scene
-     */
-    private Scene constructScene() {
-        final EntryMessage entryMessage = log.traceEntry("constructScene() of {}", this);
-        ACTION_BUTTON.setOnAction(this::onSearchRequest);
-        final VBox vBox = new VBox(
-                new HBox(new Label("Path: "), PATH_FIELD),
-                new HBox(new Label("Extension: "), EXTENSION_FIELD),
-                new HBox(new Label("Text: "), TEXT_FIELD)
-        );
-        final GridPane gridPane = new GridPane();
-        final ListView<Path> listView = new ListView<>();
-        listView.setItems(FILES);
-        listView.setMinWidth(300);
-        listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> selectionListener(oldValue, newValue));
-        gridPane.add(listView, 0, 0);
-        gridPane.add(tabPane, 1, 0);
-        gridPane.addRow(1, vBox, ACTION_BUTTON);
-        final Scene scene = new Scene(gridPane, 1366, 768);
-        return log.traceExit(entryMessage, scene);
+    private TreeItem<Path> generateTree(final List<Path> paths) {
+        final EntryMessage m = log.traceEntry("generateTree(paths = {}) of {}", paths, this);
+        final TreeItem<Path> treeRoot = new TreeItem<>(this.root);
+        paths.forEach(file -> {
+            final Stack<Path> pathStack = new Stack<>();
+            pathStack.push(file);
+            Path parent = file.getParent();
+            while (!parent.equals(this.root)) {
+                pathStack.push(parent);
+                parent = parent.getParent();
+            }
+            TreeItem<Path> currentRoot = treeRoot;
+            while (!pathStack.empty()) {
+                final Path current = pathStack.pop();
+                final int index = currentRoot.getChildren().indexOf(current);
+                if (index >= 0) {
+                    currentRoot = currentRoot.getChildren().get(index);
+                } else {
+                    final TreeItem<Path> newRoot = new TreeItem<>(current);
+                    currentRoot.getChildren().add(newRoot);
+                    currentRoot = newRoot;
+                }
+            }
+        });
+        return log.traceExit(m, treeRoot);
     }
 
     /**
      * Called when a new item is selected in the listView
      *
-     * @param oldValue   the previously selected item
-     * @param newValue   the new selected item
+     * @param oldValue the previously selected item
+     * @param newValue the new selected item
      */
     private void selectionListener(final Path oldValue, final Path newValue) {
         final EntryMessage m = log.traceEntry("selectionListener(oldValue = {}, newValue = {}", oldValue, newValue);
@@ -81,6 +92,11 @@ public class EntryPoint extends Application {
             return;
         }
         final MarkedFileService service = new MarkedFileService(newValue, TEXT_FIELD.getText());
+        service.setOnRunning(event -> {
+            PROGRESS_INDICATOR.setVisible(true);
+            PROGRESS_INDICATOR.progressProperty().unbind();
+            PROGRESS_INDICATOR.progressProperty().bind(event.getSource().progressProperty());
+        });
         service.setOnSucceeded(stateEvent -> addTab((TextArea) stateEvent.getSource().getValue(), newValue));
         service.start();
         log.traceExit(m);
@@ -94,34 +110,54 @@ public class EntryPoint extends Application {
      */
     private void addTab(final TextArea textArea, final Path path) {
         final EntryMessage m = log.traceEntry("addTab(textArea = {}) of {}", textArea, this);
-        tabPane.getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
-        tabPane.getTabs().add(new Tab(path.toString(), textArea));
+        TAB_PANE.getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
+        TAB_PANE.getTabs().add(new Tab(path.toString(), textArea));
         log.traceExit(m);
     }
 
     /**
      * Initializes a TextSearchService and passes it to performSearch()
      *
-     * @param actionEvent the event which has requested search
      * @throws IllegalArgumentException if an error is happened during the initialization
      */
-    private void onSearchRequest(final ActionEvent actionEvent) {
-        final EntryMessage entryMessage =
-                log.traceEntry("onSearchRequest(actionEvent = {}) of {}", actionEvent, this);
-        final String path = PATH_FIELD.getText();
+    @FXML
+    protected void onSearchRequest() {
+        final EntryMessage entryMessage = log.traceEntry("onSearchRequest() of {}", this);
+        if (root == null) {
+            log.traceExit(entryMessage);
+            return;
+        }
         final String extension = EXTENSION_FIELD.getText();
         final String text = TEXT_FIELD.getText();
         final TextSearchService service;
         try {
-            service = new TextSearchService(Paths.get(path), extension, text);
+            service = new TextSearchService(root, extension, text);
         } catch (final IllegalArgumentException err) {
             log.error(entryMessage, err);
             return;
         }
-        //noinspection unchecked
-        service.setOnSucceeded(stateEvent -> FILES.setAll((List<Path>) stateEvent.getSource().getValue()));
+        service.setOnRunning(event -> {
+            PROGRESS_INDICATOR.setVisible(true);
+            PROGRESS_INDICATOR.progressProperty().unbind();
+            PROGRESS_INDICATOR.progressProperty().bind(event.getSource().progressProperty());
+        });
+        service.setOnSucceeded(stateEvent -> {
+            //noinspection unchecked
+            TREE_VIEW.setRoot(generateTree((List<Path>) stateEvent.getSource().getValue()));
+            PROGRESS_INDICATOR.setVisible(false);
+        });
         service.start();
-        ACTION_BUTTON.textProperty().bind(service.messageProperty());
         log.traceExit(entryMessage);
+    }
+
+    @FXML
+    protected void showDirectoryChooser() {
+        final DirectoryChooser chooser = new DirectoryChooser();
+        if (root != null) {
+            chooser.setInitialDirectory(root.toFile());
+        }
+        final File file = chooser.showDialog(primaryStage);
+        root = file == null ? null : file.toPath();
+        PATH_FIELD.setText(root == null ? "" : root.toString());
     }
 }

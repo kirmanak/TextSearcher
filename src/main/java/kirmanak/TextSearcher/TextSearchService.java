@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Getter
@@ -90,19 +91,33 @@ public class TextSearchService extends Service<List<Path>> {
             final ArrayList<Path> result = new ArrayList<>(FILE_COUNT);
             int counter = 0;
             for (final Future<Optional<Path>> future : futures) {
-                try {
-                    future.get().ifPresent(result::add);
-                } catch (final InterruptedException err) {
-                    log.error(m, err);
-                    Thread.currentThread().interrupt();
-                } catch (final ExecutionException err) {
-                    log.error(m, err);
-                }
+                getFuture(future, result::add);
                 counter++;
                 updateProgress(counter, FILE_COUNT);
             }
             result.trimToSize();
             return log.traceExit(m, result);
+        }
+
+        /**
+         * Gets the future result catching the exceptions
+         *
+         * @param future   the future to be unwrapped
+         * @param consumer the consumer of the result
+         */
+        private void getFuture(final Future<Optional<Path>> future, final Consumer<Path> consumer) {
+            final EntryMessage m = log.traceEntry(
+                    "getFuture(future = {}, consumer = {}) of {}", future, consumer, this
+            );
+            try {
+                future.get().ifPresent(consumer);
+            } catch (final InterruptedException err) {
+                log.error(m, err);
+                Thread.currentThread().interrupt();
+            } catch (final ExecutionException err) {
+                log.error(m, err);
+            }
+            log.traceExit(m);
         }
 
         /**

@@ -154,18 +154,25 @@ public class TextSearchService extends Service<List<Path>> {
             final ExecutorService executorService = Executors.newWorkStealingPool();
             final List<Future<Optional<Path>>> result = new LinkedList<>();
             while (iterator.hasNext()) {
-                final Path current;
-                try {
-                    current = iterator.next();
-                } catch (final Exception err) {
-                    log.error(m, err);
-                    continue;
-                }
-                if (current.toString().endsWith(getExtension())) {
+                final Path current = iterator.next();
+                if (shouldBeChecked(current)) {
                     result.add(executorService.submit(pathToCallable(current)));
                 }
             }
             return log.traceExit(m, result);
+        }
+
+        /**
+         * Checks whether the path should be read or not
+         *
+         * @param path the path to be checked
+         * @return the decision
+         */
+        private boolean shouldBeChecked(final Path path) {
+            final EntryMessage m = log.traceEntry("shouldBeChecked(path = {}) of {}", path, this);
+            final boolean answer =
+                    path.toString().endsWith(getExtension()) && Files.isRegularFile(path) && Files.isReadable(path);
+            return log.traceExit(m, answer);
         }
 
         /**
@@ -175,14 +182,16 @@ public class TextSearchService extends Service<List<Path>> {
          */
         private List<Future<Optional<Path>>> walk() {
             final EntryMessage m = log.traceEntry("walk() of {}", this);
-            final Iterator<Path> iterator;
-            try (final Stream<Path> pathStream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)) {
-                iterator = pathStream.iterator();
+            final Stream<Path> stream;
+            try {
+                stream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
             } catch (final IOException err) {
                 log.error(m, err);
                 return log.traceExit(m, Collections.emptyList());
             }
-            return log.traceExit(m, iterateThroughFiles(iterator));
+            final List<Future<Optional<Path>>> result = iterateThroughFiles(stream.iterator());
+            stream.close();
+            return log.traceExit(m, result);
         }
     }
 }

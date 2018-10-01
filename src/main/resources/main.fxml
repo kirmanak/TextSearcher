@@ -17,7 +17,8 @@
         </rowConstraints>
         <TextField fx:id="pathField" promptText="/var/log"/>
         <TextField fx:id="textField" promptText="Search request" GridPane.rowIndex="1"/>
-        <TextField fx:id="extensionField" promptText="log" text="log" GridPane.rowIndex="2"/>
+        <TextField fx:id="extensionField" promptText="File extension (e.g. &quot;log&quot;)" text="log"
+                   GridPane.rowIndex="2"/>
         <Button onAction="#showDirectoryChooser" text="Choose..." GridPane.columnIndex="1"/>
         <Button contentDisplay="CENTER" defaultButton="true" mnemonicParsing="false" onAction="#onSearchRequest"
                 text="Search" textAlignment="CENTER" GridPane.columnIndex="1" GridPane.rowIndex="1"/>

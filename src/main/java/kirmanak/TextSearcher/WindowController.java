@@ -23,6 +23,7 @@ import java.util.Optional;
 @Setter
 @ToString
 public class WindowController {
+    // TODO: add error handling
     @FXML
     private TextField pathField;
     @FXML

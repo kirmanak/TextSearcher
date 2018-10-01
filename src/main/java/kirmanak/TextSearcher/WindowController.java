@@ -15,7 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,81 +38,6 @@ public class WindowController {
     @FXML
     private Stage primaryStage;
     private Path root = null;
-
-
-    /**
-     * Adds paths from the list to the provided treeRoot if they are not present
-     *
-     * @param treeRoot the treeRoot which should contain all paths from the list
-     * @param list     paths to add to the treeRoot
-     */
-    private static void addPaths(final TreeItem<Path> treeRoot, final List<Path> list) {
-        final EntryMessage m = log.traceEntry("addPaths(treeRoot = {}, list = {})", treeRoot, list);
-        TreeItem<Path> currentRoot = treeRoot;
-        main:
-        for (final Path path : list) {
-            for (final TreeItem<Path> child : currentRoot.getChildren()) {
-                if (child.getValue().equals(path)) {
-                    currentRoot = child;
-                    continue main;
-                }
-            }
-            final TreeItem<Path> newRoot = new TreeItem<>(path);
-            currentRoot.getChildren().add(newRoot);
-            currentRoot = newRoot;
-        }
-        log.traceExit(m);
-    }
-
-    /**
-     * Generates a root TreeItem containing all found files
-     *
-     * @param paths the paths to be wrapped
-     * @return the root of TreeView
-     */
-    private TreeItem<Path> generateTree(final List<Path> paths) {
-        final EntryMessage m = log.traceEntry("generateTree(paths = {}) of {}", paths, this);
-        final Optional<Path> root = getRoot();
-        if (!root.isPresent()) {
-            final IllegalStateException err = new IllegalStateException(
-                    "Can not generate a tree if the root is not present"
-            );
-            log.error(m, err);
-            throw err;
-        }
-        final TreeItem<Path> treeRoot = new TreeItem<>(getRoot().get());
-        treeRoot.setExpanded(true);
-        paths.stream().map(this::listOfPaths).forEach(list -> addPaths(treeRoot, list));
-        return log.traceExit(m, treeRoot);
-    }
-
-    /**
-     * Generates a list of directories to find this path from the current root.
-     * "/home/user/folder/file.log" becomes "[user, folder, file.log]" if the root is "/home"
-     *
-     * @param path the path to the file
-     * @return the list of paths
-     */
-    private List<Path> listOfPaths(final Path path) {
-        final EntryMessage m = log.traceEntry("listOfPaths(path = {}) of {}", path, this);
-        final Optional<Path> optionalRoot = getRoot();
-        if (!optionalRoot.isPresent()) {
-            final IllegalStateException err = new IllegalStateException(
-                    "Can not generate a list of paths if the root is not present"
-            );
-            log.error(m, err);
-            throw err;
-        }
-        final Path root = optionalRoot.get();
-        final LinkedList<Path> pathsList = new LinkedList<>();
-        pathsList.addFirst(path.getFileName());
-        Path parent = path.getParent();
-        while (!parent.equals(root)) {
-            pathsList.addFirst(parent.getFileName());
-            parent = parent.getParent();
-        }
-        return log.traceExit(m, pathsList);
-    }
 
     /**
      * Called when a new item is selected in the treeView
@@ -166,7 +90,7 @@ public class WindowController {
      */
     private void addTab(final TextArea textArea, final Path path) {
         final EntryMessage m = log.traceEntry(
-                "addTab(textArea = {}, path = {}) of {}", textArea, path, this
+                "addTab(textArea = {}, path = {})", textArea, path
         );
         getTabPane().getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
         getTabPane().getTabs().add(new Tab(path.toString(), textArea));
@@ -179,14 +103,15 @@ public class WindowController {
      */
     @FXML
     protected void onSearchRequest() {
-        final EntryMessage entryMessage = log.traceEntry("onSearchRequest() of {}", this);
+        final EntryMessage entryMessage = log.traceEntry("onSearchRequest()");
         final Optional<Path> optionalRoot = getRoot();
         if (!optionalRoot.isPresent()) {
             return;
         }
+        final Path root = optionalRoot.get();
         final TextSearchService service;
         try {
-            service = new TextSearchService(optionalRoot.get(), getExtensionField().getText(), getTextField().getText());
+            service = new TextSearchService(root, getExtensionField().getText(), getTextField().getText());
         } catch (final IllegalArgumentException err) {
             log.error(entryMessage, err);
             return;
@@ -198,9 +123,21 @@ public class WindowController {
         });
         service.setOnFailed(stateEvent -> getProgressIndicator().setVisible(false));
         service.setOnSucceeded(stateEvent -> {
-            //noinspection unchecked
-            getTreeView().setRoot(generateTree((List<Path>) stateEvent.getSource().getValue()));
             getProgressIndicator().setVisible(false);
+            final TreeGeneratorService treeGeneratorService = new TreeGeneratorService(
+                    (List<Path>) stateEvent.getSource().getValue(), root
+            );
+            treeGeneratorService.setOnRunning(event -> {
+                getProgressIndicator().setVisible(true);
+                getProgressIndicator().progressProperty().unbind();
+                getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
+            });
+            treeGeneratorService.setOnFailed(event -> getProgressIndicator().setVisible(false));
+            treeGeneratorService.setOnSucceeded(event -> {
+                getProgressIndicator().setVisible(false);
+                getTreeView().setRoot((TreeItem<Path>) event.getSource().getValue());
+            });
+            treeGeneratorService.start();
         });
         service.start();
         log.traceExit(entryMessage);
@@ -212,7 +149,7 @@ public class WindowController {
      * @return the root folder to start search
      */
     private Optional<Path> getRoot() {
-        final EntryMessage entryMessage = log.traceEntry("getRoot() of {}", this);
+        final EntryMessage entryMessage = log.traceEntry("getRoot()");
         final String folderPath = getPathField().getText();
         if (!Optional.ofNullable(root).isPresent() && !folderPath.isEmpty()) {
             try {
@@ -231,21 +168,25 @@ public class WindowController {
 
     @FXML
     protected void showDirectoryChooser() {
+        final EntryMessage entryMessage = log.traceEntry("showDirectoryChooser()");
         final DirectoryChooser chooser = new DirectoryChooser();
         final Optional<Path> optionalPath = getRoot();
         optionalPath.ifPresent(path -> chooser.setInitialDirectory(path.toFile()));
         final File file = chooser.showDialog(getPrimaryStage());
         Optional.ofNullable(file).ifPresent(newRoot -> root = file.toPath());
         Optional.ofNullable(root).ifPresent(path -> getPathField().setText(root.toString()));
+        log.traceExit(entryMessage);
     }
 
     @FXML
     public void initialize() {
+        final EntryMessage entryMessage = log.traceEntry("initialize()");
         getTreeView()
                 .getSelectionModel()
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) ->
                         Optional.ofNullable(newValue).ifPresent(this::goUp)
                 );
+        log.traceExit(entryMessage);
     }
 }

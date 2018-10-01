@@ -8,18 +8,24 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import lombok.Getter;
+import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 @Log4j2
+@Getter
+@ToString
 public class EntryPoint extends Application {
     @FXML
     private TextField PATH_FIELD;
@@ -34,7 +40,7 @@ public class EntryPoint extends Application {
     @FXML
     private TreeView<Path> TREE_VIEW;
     private Stage primaryStage;
-    private Path root;
+    private Path root = null;
 
     public static void main(String[] args) {
         launch();
@@ -47,10 +53,10 @@ public class EntryPoint extends Application {
      */
     public void start(final Stage primaryStage) throws IOException {
         final EntryMessage entryMessage = log.traceEntry("start(primaryStage = {}) of {}", primaryStage, this);
-        final Parent root = FXMLLoader.load(getClass().getResource("/main.fxml"));
+        final Parent parent = FXMLLoader.load(getClass().getResource("/main.fxml"));
         this.primaryStage = primaryStage;
         primaryStage.setTitle("TextSearcher");
-        primaryStage.setScene(new Scene(root));
+        primaryStage.setScene(new Scene(parent));
         primaryStage.show();
         log.traceExit(entryMessage);
     }
@@ -87,7 +93,15 @@ public class EntryPoint extends Application {
      */
     private TreeItem<Path> generateTree(final List<Path> paths) {
         final EntryMessage m = log.traceEntry("generateTree(paths = {}) of {}", paths, this);
-        final TreeItem<Path> treeRoot = new TreeItem<>(this.root);
+        final Optional<Path> root = getRoot();
+        if (!root.isPresent()) {
+            final IllegalStateException err = new IllegalStateException(
+                    "Can not generate a tree if the root is not present"
+            );
+            log.error(m, err);
+            throw err;
+        }
+        final TreeItem<Path> treeRoot = new TreeItem<>(getRoot().get());
         treeRoot.setExpanded(true);
         paths.stream().map(this::listOfPaths).forEach(list -> addPaths(treeRoot, list));
         return log.traceExit(m, treeRoot);
@@ -102,10 +116,19 @@ public class EntryPoint extends Application {
      */
     private List<Path> listOfPaths(final Path path) {
         final EntryMessage m = log.traceEntry("listOfPaths(path = {}) of {}", path, this);
+        final Optional<Path> optionalRoot = getRoot();
+        if (!optionalRoot.isPresent()) {
+            final IllegalStateException err = new IllegalStateException(
+                    "Can not generate a list of paths if the root is not present"
+            );
+            log.error(m, err);
+            throw err;
+        }
+        final Path root = optionalRoot.get();
         final LinkedList<Path> pathsList = new LinkedList<>();
         pathsList.addFirst(path.getFileName());
         Path parent = path.getParent();
-        while (!parent.equals(this.root)) {
+        while (!parent.equals(root)) {
             pathsList.addFirst(parent.getFileName());
             parent = parent.getParent();
         }
@@ -123,11 +146,11 @@ public class EntryPoint extends Application {
         if (newValue == null) {
             return;
         }
-        final MarkedFileService service = new MarkedFileService(newValue, TEXT_FIELD.getText());
+        final MarkedFileService service = new MarkedFileService(newValue, getTEXT_FIELD().getText());
         service.setOnRunning(event -> {
-            PROGRESS_INDICATOR.setVisible(true);
-            PROGRESS_INDICATOR.progressProperty().unbind();
-            PROGRESS_INDICATOR.progressProperty().bind(event.getSource().progressProperty());
+            getPROGRESS_INDICATOR().setVisible(true);
+            getPROGRESS_INDICATOR().progressProperty().unbind();
+            getPROGRESS_INDICATOR().progressProperty().bind(event.getSource().progressProperty());
         });
         service.setOnSucceeded(stateEvent -> addTab((TextArea) stateEvent.getSource().getValue(), newValue));
         service.start();
@@ -142,8 +165,8 @@ public class EntryPoint extends Application {
      */
     private void addTab(final TextArea textArea, final Path path) {
         final EntryMessage m = log.traceEntry("addTab(textArea = {}) of {}", textArea, this);
-        TAB_PANE.getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
-        TAB_PANE.getTabs().add(new Tab(path.toString(), textArea));
+        getTAB_PANE().getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
+        getTAB_PANE().getTabs().add(new Tab(path.toString(), textArea));
         log.traceExit(m);
     }
 
@@ -153,45 +176,61 @@ public class EntryPoint extends Application {
     @FXML
     protected void onSearchRequest() {
         final EntryMessage entryMessage = log.traceEntry("onSearchRequest() of {}", this);
-        if (root == null) {
-            try {
-                root = Paths.get(PATH_FIELD.getText());
-            } catch (final InvalidPathException err) {
-                log.error(entryMessage, err);
-                return;
-            }
+        final Optional<Path> optionalRoot = getRoot();
+        if (!optionalRoot.isPresent()) {
+            return;
         }
-        final String extension = EXTENSION_FIELD.getText();
-        final String text = TEXT_FIELD.getText();
         final TextSearchService service;
         try {
-            service = new TextSearchService(root, extension, text);
+            service = new TextSearchService(optionalRoot.get(), getEXTENSION_FIELD().getText(), getTEXT_FIELD().getText());
         } catch (final IllegalArgumentException err) {
             log.error(entryMessage, err);
             return;
         }
         service.setOnRunning(event -> {
-            PROGRESS_INDICATOR.setVisible(true);
-            PROGRESS_INDICATOR.progressProperty().unbind();
-            PROGRESS_INDICATOR.progressProperty().bind(event.getSource().progressProperty());
+            getPROGRESS_INDICATOR().setVisible(true);
+            getPROGRESS_INDICATOR().progressProperty().unbind();
+            getPROGRESS_INDICATOR().progressProperty().bind(event.getSource().progressProperty());
         });
         service.setOnSucceeded(stateEvent -> {
             //noinspection unchecked
-            TREE_VIEW.setRoot(generateTree((List<Path>) stateEvent.getSource().getValue()));
-            PROGRESS_INDICATOR.setVisible(false);
+            getTREE_VIEW().setRoot(generateTree((List<Path>) stateEvent.getSource().getValue()));
+            getPROGRESS_INDICATOR().setVisible(false);
         });
         service.start();
         log.traceExit(entryMessage);
     }
 
+    /**
+     * Gets root based on the text field and directory chooser
+     *
+     * @return the root folder to start search
+     */
+    private Optional<Path> getRoot() {
+        final EntryMessage entryMessage = log.traceEntry("getRoot() of {}", this);
+        final String folderPath = getPATH_FIELD().getText();
+        if (!Optional.ofNullable(root).isPresent() && !folderPath.isEmpty()) {
+            try {
+                root = Paths.get(folderPath);
+            } catch (final InvalidPathException err) {
+                log.error(entryMessage, err);
+                return log.traceExit(entryMessage, Optional.empty());
+            }
+        }
+        if (Optional.ofNullable(root).isPresent() && Files.exists(root) && Files.isDirectory(root)) {
+            return log.traceExit(entryMessage, Optional.of(root));
+        }
+        root = null;
+        return log.traceExit(entryMessage, Optional.empty());
+    }
+
     @FXML
     protected void showDirectoryChooser() {
         final DirectoryChooser chooser = new DirectoryChooser();
-        if (root != null) {
-            chooser.setInitialDirectory(root.toFile());
-        }
+        final Optional<Path> optionalPath = getRoot();
+        optionalPath.ifPresent(path -> chooser.setInitialDirectory(path.toFile()));
         final File file = chooser.showDialog(primaryStage);
-        root = file == null ? null : file.toPath();
-        PATH_FIELD.setText(root == null ? "" : root.toString());
+        Optional.ofNullable(file).ifPresent(newRoot -> root = file.toPath());
+        Optional.ofNullable(root).ifPresent(path -> getPATH_FIELD().setText(root.toString()));
     }
 }

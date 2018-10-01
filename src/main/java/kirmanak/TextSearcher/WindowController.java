@@ -170,6 +170,7 @@ public class WindowController {
         );
         getTabPane().getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
         getTabPane().getTabs().add(new Tab(path.toString(), textArea));
+        getTabPane().getSelectionModel().selectLast();
         log.traceExit(m);
     }
 

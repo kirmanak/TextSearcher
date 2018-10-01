@@ -136,23 +136,23 @@ public class EntryPoint extends Application {
     }
 
     /**
-     * Called when a new item is selected in the listView
+     * Called when a new item is selected in the treeView
      *
-     * @param oldValue the previously selected item
      * @param newValue the new selected item
      */
-    private void selectionListener(final Path oldValue, final Path newValue) {
-        final EntryMessage m = log.traceEntry("selectionListener(oldValue = {}, newValue = {}", oldValue, newValue);
-        if (newValue == null) {
-            return;
-        }
+    private void selectionListener(final Path newValue) {
+        final EntryMessage m = log.traceEntry("selectionListener(newValue = {}", newValue);
         final MarkedFileService service = new MarkedFileService(newValue, getTEXT_FIELD().getText());
         service.setOnRunning(event -> {
             getPROGRESS_INDICATOR().setVisible(true);
             getPROGRESS_INDICATOR().progressProperty().unbind();
             getPROGRESS_INDICATOR().progressProperty().bind(event.getSource().progressProperty());
         });
-        service.setOnSucceeded(stateEvent -> addTab((TextArea) stateEvent.getSource().getValue(), newValue));
+        service.setOnFailed(stateEvent -> getPROGRESS_INDICATOR().setVisible(false));
+        service.setOnSucceeded(stateEvent -> {
+            addTab((TextArea) stateEvent.getSource().getValue(), newValue);
+            getPROGRESS_INDICATOR().setVisible(false);
+        });
         service.start();
         log.traceExit(m);
     }
@@ -164,7 +164,9 @@ public class EntryPoint extends Application {
      * @param path     the tab name
      */
     private void addTab(final TextArea textArea, final Path path) {
-        final EntryMessage m = log.traceEntry("addTab(textArea = {}) of {}", textArea, this);
+        final EntryMessage m = log.traceEntry(
+                "addTab(textArea = {}, path = {}) of {}", textArea, path, this
+        );
         getTAB_PANE().getTabs().removeIf(tab -> tab.getText().equals(path.toString()));
         getTAB_PANE().getTabs().add(new Tab(path.toString(), textArea));
         log.traceExit(m);
@@ -192,6 +194,7 @@ public class EntryPoint extends Application {
             getPROGRESS_INDICATOR().progressProperty().unbind();
             getPROGRESS_INDICATOR().progressProperty().bind(event.getSource().progressProperty());
         });
+        service.setOnFailed(stateEvent -> getPROGRESS_INDICATOR().setVisible(false));
         service.setOnSucceeded(stateEvent -> {
             //noinspection unchecked
             getTREE_VIEW().setRoot(generateTree((List<Path>) stateEvent.getSource().getValue()));

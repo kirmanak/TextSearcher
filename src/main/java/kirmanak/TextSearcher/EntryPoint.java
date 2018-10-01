@@ -12,6 +12,9 @@ import java.io.IOException;
 
 @Log4j2
 public class EntryPoint extends Application {
+    public static void main(String[] args) {
+        launch(args);
+    }
     /**
      * Starts the GUI
      *

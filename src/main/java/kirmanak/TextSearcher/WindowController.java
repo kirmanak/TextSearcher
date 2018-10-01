@@ -55,6 +55,7 @@ public class WindowController {
         });
         service.setOnFailed(stateEvent -> getProgressIndicator().setVisible(false));
         service.setOnSucceeded(stateEvent -> {
+            // TODO: use something faster
             addTab((TextArea) stateEvent.getSource().getValue(), newValue);
             getProgressIndicator().setVisible(false);
         });

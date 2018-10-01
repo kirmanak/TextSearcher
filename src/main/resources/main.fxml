@@ -16,15 +16,15 @@
             <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
         </rowConstraints>
         <TextField fx:id="PATH_FIELD" promptText="/var/log"/>
-        <TextField fx:id="EXTENSION_FIELD" promptText="log" text="log" GridPane.rowIndex="2"/>
         <TextField fx:id="TEXT_FIELD" promptText="Search request" GridPane.rowIndex="1"/>
+        <TextField fx:id="EXTENSION_FIELD" promptText="log" text="log" GridPane.rowIndex="2"/>
+        <Button onAction="#showDirectoryChooser" text="Choose..." GridPane.columnIndex="1"/>
         <Button contentDisplay="CENTER" defaultButton="true" mnemonicParsing="false" onAction="#onSearchRequest"
                 text="Search" textAlignment="CENTER" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-        <Button onAction="#showDirectoryChooser" text="Choose..." GridPane.columnIndex="1"/>
         <ProgressIndicator fx:id="PROGRESS_INDICATOR" progress="0.0" visible="false" GridPane.columnIndex="1"
                            GridPane.rowIndex="2"/>
     </GridPane>
-    <SplitPane dividerPositions="0.25">
+    <SplitPane dividerPositions="0.4">
         <TreeView fx:id="TREE_VIEW"/>
         <TabPane fx:id="TAB_PANE"/>
     </SplitPane>

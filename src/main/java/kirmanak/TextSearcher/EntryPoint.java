@@ -13,7 +13,9 @@ import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -146,16 +148,18 @@ public class EntryPoint extends Application {
     }
 
     /**
-     * Initializes a TextSearchService and passes it to performSearch()
-     *
-     * @throws IllegalArgumentException if an error is happened during the initialization
+     * Creates a TextSearchService and starts the search
      */
     @FXML
     protected void onSearchRequest() {
         final EntryMessage entryMessage = log.traceEntry("onSearchRequest() of {}", this);
         if (root == null) {
-            log.traceExit(entryMessage);
-            return;
+            try {
+                root = Paths.get(PATH_FIELD.getText());
+            } catch (final InvalidPathException err) {
+                log.error(entryMessage, err);
+                return;
+            }
         }
         final String extension = EXTENSION_FIELD.getText();
         final String text = TEXT_FIELD.getText();

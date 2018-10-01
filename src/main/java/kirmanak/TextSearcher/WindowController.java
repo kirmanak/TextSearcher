@@ -121,20 +121,45 @@ public class WindowController {
      * @param newValue the new selected item
      */
     private void selectionListener(final Path newValue) {
-        final EntryMessage m = log.traceEntry("selectionListener(newValue = {}", newValue);
+        final EntryMessage m = log.traceEntry("selectionListener(newValue = {})", newValue);
         final MarkedFileService service = new MarkedFileService(newValue, getTextField().getText());
         service.setOnRunning(event -> {
             getProgressIndicator().setVisible(true);
             getProgressIndicator().progressProperty().unbind();
             getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
         });
-        service.setOnFailed(stateEvent -> getProgressIndicator().setVisible(false));
+        service.setOnFailed(stateEvent -> {
+            log.debug("selectionListener(newValue = {}) has failed: {}", newValue, stateEvent.getSource().getException());
+            getProgressIndicator().setVisible(false);
+        });
         service.setOnSucceeded(stateEvent -> {
+            log.debug("selectionListener(newValue = {}) has succeeded", newValue);
             addTab((TextArea) stateEvent.getSource().getValue(), newValue);
             getProgressIndicator().setVisible(false);
         });
         service.start();
         log.traceExit(m);
+    }
+
+    /**
+     * Calculates the path for the item based on the tree structure and calls selectionListener in case of success
+     *
+     * @param item item to start
+     */
+    private void goUp(final TreeItem<Path> item) {
+        final EntryMessage entryMessage = log.traceEntry("goUp(item = {})", item);
+        final Optional<Path> optionalPath = getRoot();
+        if (optionalPath.isPresent()) {
+            final Path path = optionalPath.get();
+            TreeItem<Path> current = item;
+            Path result = item.getValue();
+            while (!current.getValue().equals(path)) {
+                current = current.getParent();
+                result = current.getValue().resolve(result);
+            }
+            selectionListener(result);
+        }
+        log.traceExit(entryMessage);
     }
 
     /**
@@ -223,7 +248,7 @@ public class WindowController {
                 .getSelectionModel()
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) ->
-                        Optional.ofNullable(newValue).ifPresent(item -> selectionListener(item.getValue()))
+                        Optional.ofNullable(newValue).ifPresent(this::goUp)
                 );
     }
 }

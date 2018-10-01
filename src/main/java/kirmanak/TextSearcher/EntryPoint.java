@@ -14,8 +14,8 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Stack;
 
 @Log4j2
 public class EntryPoint extends Application {
@@ -53,31 +53,61 @@ public class EntryPoint extends Application {
         log.traceExit(entryMessage);
     }
 
+    /**
+     * Adds paths from the list to the provided treeRoot if they are not present
+     *
+     * @param treeRoot the treeRoot which should contain all paths from the list
+     * @param list     paths to add to the treeRoot
+     */
+    private static void addPaths(final TreeItem<Path> treeRoot, final List<Path> list) {
+        final EntryMessage m = log.traceEntry("addPaths(treeRoot = {}, list = {})", treeRoot, list);
+        TreeItem<Path> currentRoot = treeRoot;
+        main:
+        for (final Path path : list) {
+            for (final TreeItem<Path> child : currentRoot.getChildren()) {
+                if (child.getValue().equals(path)) {
+                    currentRoot = child;
+                    continue main;
+                }
+            }
+            final TreeItem<Path> newRoot = new TreeItem<>(path);
+            currentRoot.getChildren().add(newRoot);
+            currentRoot = newRoot;
+        }
+        log.traceExit(m);
+    }
+
+    /**
+     * Generates a root TreeItem containing all found files
+     *
+     * @param paths the paths to be wrapped
+     * @return the root of TreeView
+     */
     private TreeItem<Path> generateTree(final List<Path> paths) {
         final EntryMessage m = log.traceEntry("generateTree(paths = {}) of {}", paths, this);
         final TreeItem<Path> treeRoot = new TreeItem<>(this.root);
-        paths.forEach(file -> {
-            final Stack<Path> pathStack = new Stack<>();
-            pathStack.push(file);
-            Path parent = file.getParent();
-            while (!parent.equals(this.root)) {
-                pathStack.push(parent);
-                parent = parent.getParent();
-            }
-            TreeItem<Path> currentRoot = treeRoot;
-            while (!pathStack.empty()) {
-                final Path current = pathStack.pop();
-                final int index = currentRoot.getChildren().indexOf(current);
-                if (index >= 0) {
-                    currentRoot = currentRoot.getChildren().get(index);
-                } else {
-                    final TreeItem<Path> newRoot = new TreeItem<>(current);
-                    currentRoot.getChildren().add(newRoot);
-                    currentRoot = newRoot;
-                }
-            }
-        });
+        treeRoot.setExpanded(true);
+        paths.stream().map(this::listOfPaths).forEach(list -> addPaths(treeRoot, list));
         return log.traceExit(m, treeRoot);
+    }
+
+    /**
+     * Generates a list of directories to find this path from the current root.
+     * "/home/user/folder/file.log" becomes "[user, folder, file.log]" if the root is "home"
+     *
+     * @param path the path to the file
+     * @return the list of paths
+     */
+    private List<Path> listOfPaths(final Path path) {
+        final EntryMessage m = log.traceEntry("listOfPaths(path = {}) of {}", path, this);
+        final LinkedList<Path> pathsList = new LinkedList<>();
+        pathsList.addFirst(path.getFileName());
+        Path parent = path.getParent();
+        while (!parent.equals(this.root)) {
+            pathsList.addFirst(parent.getFileName());
+            parent = parent.getParent();
+        }
+        return log.traceExit(m, pathsList);
     }
 
     /**

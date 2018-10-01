@@ -128,12 +128,8 @@ public class WindowController {
             getProgressIndicator().progressProperty().unbind();
             getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
         });
-        service.setOnFailed(stateEvent -> {
-            log.debug("selectionListener(newValue = {}) has failed: {}", newValue, stateEvent.getSource().getException());
-            getProgressIndicator().setVisible(false);
-        });
+        service.setOnFailed(stateEvent -> getProgressIndicator().setVisible(false));
         service.setOnSucceeded(stateEvent -> {
-            log.debug("selectionListener(newValue = {}) has succeeded", newValue);
             addTab((TextArea) stateEvent.getSource().getValue(), newValue);
             getProgressIndicator().setVisible(false);
         });

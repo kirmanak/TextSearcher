@@ -1,5 +1,6 @@
 package kirmanak.TextSearcher;
 
+import javafx.concurrent.WorkerStateEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
@@ -41,19 +42,15 @@ public class WindowController {
     private Path root = null;
 
     /**
-     * Called when a new item is selected in the treeView
+     * Shows content of the provided path
      *
      * @param newValue the new selected item
      */
-    private void selectionListener(final Path newValue) {
-        final EntryMessage m = log.traceEntry("selectionListener(newValue = {})", newValue);
-        final MarkedFileService service = new MarkedFileService(newValue, getTextField().getText());
-        service.setOnRunning(event -> {
-            getProgressIndicator().setVisible(true);
-            getProgressIndicator().progressProperty().unbind();
-            getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
-        });
-        service.setOnFailed(stateEvent -> getProgressIndicator().setVisible(false));
+    private void showContent(final Path newValue) {
+        final EntryMessage m = log.traceEntry("showContent(newValue = {})", newValue);
+        final TextViewService service = new TextViewService(newValue, getTextField().getText());
+        service.setOnRunning(this::onTaskRunning);
+        service.setOnFailed(this::onTaskFailed);
         service.setOnSucceeded(stateEvent -> {
             // TODO: use something faster
             addTab((TextArea) stateEvent.getSource().getValue(), newValue);
@@ -68,8 +65,8 @@ public class WindowController {
      *
      * @param item item to start
      */
-    private void goUp(final TreeItem<Path> item) {
-        final EntryMessage entryMessage = log.traceEntry("goUp(item = {})", item);
+    private void selectionListener(final TreeItem<Path> item) {
+        final EntryMessage entryMessage = log.traceEntry("selectionListener(item = {})", item);
         final Optional<Path> optionalPath = getRoot();
         if (optionalPath.isPresent()) {
             final Path path = optionalPath.get();
@@ -79,7 +76,7 @@ public class WindowController {
                 current = current.getParent();
                 result = current.getValue().resolve(result);
             }
-            selectionListener(result);
+            showContent(result);
         }
         log.traceExit(entryMessage);
     }
@@ -118,30 +115,55 @@ public class WindowController {
             log.error(entryMessage, err);
             return;
         }
-        service.setOnRunning(event -> {
-            getProgressIndicator().setVisible(true);
-            getProgressIndicator().progressProperty().unbind();
-            getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
-        });
-        service.setOnFailed(stateEvent -> getProgressIndicator().setVisible(false));
-        service.setOnSucceeded(stateEvent -> {
+        service.setOnRunning(this::onTaskRunning);
+        service.setOnFailed(this::onTaskFailed);
+        service.setOnSucceeded(this::onSearchSucceeded);
+        service.start();
+        log.traceExit(entryMessage);
+    }
+
+    /**
+     * Generates a TreeView on successful search
+     *
+     * @param stateEvent the search result
+     */
+    private void onSearchSucceeded(final WorkerStateEvent stateEvent) {
+        final EntryMessage entryMessage = log.traceEntry("onSearchSucceeded(stateEvent = {})", stateEvent);
+        getProgressIndicator().setVisible(false);
+        final TreeGeneratorService service = new TreeGeneratorService(
+                (List<Path>) stateEvent.getSource().getValue(), root
+        );
+        service.setOnRunning(this::onTaskRunning);
+        service.setOnFailed(this::onTaskFailed);
+        service.setOnSucceeded(event -> {
             getProgressIndicator().setVisible(false);
-            final TreeGeneratorService treeGeneratorService = new TreeGeneratorService(
-                    (List<Path>) stateEvent.getSource().getValue(), root
-            );
-            treeGeneratorService.setOnRunning(event -> {
-                getProgressIndicator().setVisible(true);
-                getProgressIndicator().progressProperty().unbind();
-                getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
-            });
-            treeGeneratorService.setOnFailed(event -> getProgressIndicator().setVisible(false));
-            treeGeneratorService.setOnSucceeded(event -> {
-                getProgressIndicator().setVisible(false);
-                getTreeView().setRoot((TreeItem<Path>) event.getSource().getValue());
-            });
-            treeGeneratorService.start();
+            getTreeView().setRoot((TreeItem<Path>) event.getSource().getValue());
         });
         service.start();
+        log.traceExit(entryMessage);
+    }
+
+    /**
+     * Handles running task showing progress indicator
+     *
+     * @param event the running task state
+     */
+    private void onTaskRunning(final WorkerStateEvent event) {
+        final EntryMessage entryMessage = log.traceEntry("onSearchSucceeded(event = {})", event);
+        getProgressIndicator().setVisible(true);
+        getProgressIndicator().progressProperty().unbind();
+        getProgressIndicator().progressProperty().bind(event.getSource().progressProperty());
+        log.traceExit(entryMessage);
+    }
+
+    /**
+     * Handles task execution errors
+     *
+     * @param event the failed task result
+     */
+    private void onTaskFailed(final WorkerStateEvent event) {
+        final EntryMessage entryMessage = log.traceEntry("onTaskFailed(event = {})", event);
+        getProgressIndicator().setVisible(false);
         log.traceExit(entryMessage);
     }
 
@@ -187,7 +209,7 @@ public class WindowController {
                 .getSelectionModel()
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) ->
-                        Optional.ofNullable(newValue).ifPresent(this::goUp)
+                        Optional.ofNullable(newValue).ifPresent(this::selectionListener)
                 );
         log.traceExit(entryMessage);
     }

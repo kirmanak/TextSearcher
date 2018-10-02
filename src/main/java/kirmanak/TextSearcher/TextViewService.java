@@ -16,25 +16,19 @@ import java.util.Iterator;
 @Log4j2
 @Getter
 @RequiredArgsConstructor
-class MarkedFileService extends Service<TextArea> {
+class TextViewService extends Service<TextArea> {
     private final Path path;
     private final String text;
 
     @Override
     protected Task<TextArea> createTask() {
-        return new MarkedFileTask(getPath(), getText());
+        return new TextViewTask();
     }
 
-    @Getter
-    @RequiredArgsConstructor
-    private class MarkedFileTask extends Task<TextArea> {
-        private final Path path;
-        private final String text;
-
+    private class TextViewTask extends Task<TextArea> {
         @Override
         protected TextArea call() throws Exception {
             final EntryMessage m = log.traceEntry("call() of {}", this);
-
             return log.traceExit(m, readText(initializeTextArea()));
         }
 
@@ -58,19 +52,14 @@ class MarkedFileService extends Service<TextArea> {
          * @throws IOException if any I/O error has happened
          */
         private TextArea readText(final TextArea textArea) throws IOException {
+            // TODO: highlight the found text
             final EntryMessage m = log.traceEntry("readText(textArea = {}) of {}", textArea, this);
-            final StringBuilder sb = new StringBuilder();
             final Iterator<String> lineIterator = Files.lines(getPath()).iterator();
-            int counter = 0;
             while (lineIterator.hasNext()) {
                 final String line = lineIterator.next();
-                sb.append(line).append("\n");
-                if (line.contains(getText())) {
-                    // TODO: highlight the text
-                }
-                counter++;
+                textArea.appendText(line);
+                textArea.appendText("\n");
             }
-            textArea.setText(sb.toString());
             return log.traceExit(m, textArea);
         }
     }

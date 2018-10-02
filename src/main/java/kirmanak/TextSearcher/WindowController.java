@@ -24,7 +24,6 @@ import java.util.Optional;
 @Setter
 @ToString
 public class WindowController {
-    // TODO: add error handling
     @FXML
     private TextField pathField;
     @FXML
@@ -161,6 +160,8 @@ public class WindowController {
     private void onTaskFailed(final WorkerStateEvent event) {
         final EntryMessage entryMessage = log.traceEntry("onTaskFailed(event = {})", event);
         getProgressIndicator().setVisible(false);
+        final Alert alert = new Alert(Alert.AlertType.ERROR, event.getSource().getException().getMessage());
+        alert.showAndWait();
         log.traceExit(entryMessage);
     }
 

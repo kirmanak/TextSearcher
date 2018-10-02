@@ -24,7 +24,7 @@ import java.util.Optional;
 @Getter
 @Setter
 @ToString
-public class WindowController {
+class WindowController {
     @FXML
     private TextField pathField;
     @FXML

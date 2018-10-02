@@ -31,7 +31,7 @@ class TextSearchService extends Service<List<Path>> {
      * @param extension  Extension of target files
      * @param text       Text to search
      */
-    public TextSearchService(final Path rootFolder, final String extension, final String text) {
+    TextSearchService(final Path rootFolder, final String extension, final String text) {
         final EntryMessage entryMessage = log.traceEntry(
                 "TextSearchService(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text
         );

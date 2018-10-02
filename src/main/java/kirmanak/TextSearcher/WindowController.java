@@ -7,7 +7,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
@@ -23,7 +22,6 @@ import java.util.Optional;
 @Log4j2
 @Getter
 @Setter
-@ToString
 class WindowController {
     @FXML
     private TextField pathField;

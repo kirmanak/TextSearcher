@@ -23,7 +23,7 @@ class FileFinder extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
-        if (attrs.isRegularFile()) {
+        if (attrs.isRegularFile() && getMatcher().matches(file.getFileName())) {
             paths.add(file);
         }
         return FileVisitResult.CONTINUE;

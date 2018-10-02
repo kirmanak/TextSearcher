@@ -1,0 +1,12 @@
+language: java
+jdk:
+- oraclejdk8
+deploy:
+  provider: releases
+  api_key:
+    secure: cY8eKdTqUbCCXXRtdP+Q+oG7aoP8vQrQvFRoZgp4LeevWJaZC5pTk+OTbfu5+gyeUmGalnnbyjAtQ32cICo/Ii7lUCI386HiQ/4pTI3PgP2yrwQdZkuk71YlLT/PX5QhG/J+1M0ek2CcbOKxmqLRi7dOE+6lh0GO+HesTLIqW8rv04aRLj90ama8Sn1Rptlr0gaSrcrMpOidKiPd+UkAD1oGVjTaXTi4CsLbwKe73WQJc/r4k9Two9LC2Tdr/Dv+H+dpGL1brjvNgXvsLAK6B5y1+wl46fB1MzezK4bM4PfOEp1vWEPu5suSXdFZJZcup8DDfdeP/AEEXLf+10AEex/aWb3/oY/0aHEEaZRc7P5lxmyebyCRvqT+SL9njmTQzrMLJ78vMIZ2WpUbK7lElmWZA3S0NMGN4XMHRTXzl+miTYgZ/6HZLG3q+tqFKj9LNoCiRU6PrYI4/xUWVinDx2Yq/FbKoBiMtQjDsclTnN2dL3xbHPFthGJAjCij0ynYM/MTiN+dnfoeCGW2UQzeWE87BSnnZqQ3XBqsr9SSAu5QvEdMCaO4bqVg+Qj3yFgUVhraQS30QCTokYvkllqK5rIMRdgkmKg0LyLYRlHIUNTal4laUaTKwjTH6R/DTqWVbrbuvFHU/orK32ovtO8bKqUhMZ9RLpwjM2zdk+FoXO8=
+  file: target/TextSearcher-1.0-SNAPSHOT-jar-with-dependencies.jar
+  skip_cleanup: true
+  on:
+    tags: true
+    repo: kirmanak/TextSearcher

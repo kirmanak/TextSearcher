@@ -47,27 +47,27 @@ public class WindowController {
      */
     private void showContent(final Path newValue) {
         final EntryMessage m = log.traceEntry("showContent(newValue = {})", newValue);
-        final TextViewService service = new TextViewService(newValue, getTextField().getText());
-        service.setOnRunning(this::onTaskRunning);
-        service.setOnFailed(this::onTaskFailed);
-        service.setOnSucceeded(stateEvent -> {
-            addTab(service.getValue(), newValue);
-            getProgressIndicator().setVisible(false);
-        });
-        service.start();
+        if (Files.isRegularFile(newValue)) {
+            final TextViewService service = new TextViewService(newValue, getTextField().getText());
+            service.setOnRunning(this::onTaskRunning);
+            service.setOnFailed(this::onTaskFailed);
+            service.setOnSucceeded(stateEvent -> {
+                addTab(service.getValue(), newValue);
+                getProgressIndicator().setVisible(false);
+            });
+            service.start();
+        }
         log.traceExit(m);
     }
 
     /**
-     * Calculates the path for the item based on the tree structure and calls selectionListener in case of success
+     * Calculates the path for the item based on the tree structure and calls showContent in case of success
      *
      * @param item item to start
      */
     private void selectionListener(final TreeItem<Path> item) {
         final EntryMessage entryMessage = log.traceEntry("selectionListener(item = {})", item);
-        final Optional<Path> optionalPath = getRoot();
-        if (optionalPath.isPresent()) {
-            final Path path = optionalPath.get();
+        getRoot().ifPresent(path -> {
             TreeItem<Path> current = item;
             Path result = item.getValue();
             while (!current.getValue().equals(path)) {
@@ -75,7 +75,7 @@ public class WindowController {
                 result = current.getValue().resolve(result);
             }
             showContent(result);
-        }
+        });
         log.traceExit(entryMessage);
     }
 

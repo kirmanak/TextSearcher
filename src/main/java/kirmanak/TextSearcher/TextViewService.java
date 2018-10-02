@@ -28,7 +28,7 @@ class TextViewService extends Service<TextArea> {
 
     private class TextViewTask extends Task<TextArea> {
         @Override
-        protected TextArea call() throws Exception {
+        protected TextArea call() throws IOException {
             final EntryMessage m = log.traceEntry("call() of {}", this);
             return log.traceExit(m, readText(initializeTextArea()));
         }

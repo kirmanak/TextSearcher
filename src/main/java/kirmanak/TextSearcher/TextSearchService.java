@@ -61,7 +61,7 @@ class TextSearchService extends Service<List<Path>> {
         private final String text;
 
         @Override
-        protected List<Path> call() {
+        protected List<Path> call() throws IOException, ExecutionException {
             final EntryMessage m = log.traceEntry("call() of {}", this);
             updateMessage("Looking for files...");
             final List<Future<Optional<Path>>> futures = walk();
@@ -77,7 +77,7 @@ class TextSearchService extends Service<List<Path>> {
          * @param futures the futures to be unwrapped
          * @return the unwrapping results
          */
-        private List<Path> getResult(final List<Future<Optional<Path>>> futures) {
+        private List<Path> getResult(final List<Future<Optional<Path>>> futures) throws ExecutionException {
             final EntryMessage m = log.traceEntry("getResult(futures = {}) of {}", futures, this);
             final int FILE_COUNT = futures.size();
             final ArrayList<Path> result = new ArrayList<>(FILE_COUNT);
@@ -97,7 +97,7 @@ class TextSearchService extends Service<List<Path>> {
          * @param future   the future to be unwrapped
          * @param consumer the consumer of the result
          */
-        private void getFuture(final Future<Optional<Path>> future, final Consumer<Path> consumer) {
+        private void getFuture(final Future<Optional<Path>> future, final Consumer<Path> consumer) throws ExecutionException {
             final EntryMessage m = log.traceEntry(
                     "getFuture(future = {}, consumer = {}) of {}", future, consumer, this
             );
@@ -106,8 +106,6 @@ class TextSearchService extends Service<List<Path>> {
             } catch (final InterruptedException err) {
                 log.error(m, err);
                 Thread.currentThread().interrupt();
-            } catch (final ExecutionException err) {
-                log.error(m, err);
             }
             log.traceExit(m);
         }
@@ -124,14 +122,8 @@ class TextSearchService extends Service<List<Path>> {
                 final EntryMessage callableEntryMessage = log.traceEntry(
                         "anonymous(path = {}) of {}", path, this
                 );
-                final boolean result;
-                try {
-                    result = Files.lines(path).anyMatch(line -> line.contains(getText()));
-                } catch (final IOException err) {
-                    log.error(m, err);
-                    return log.traceExit(m, Optional.empty());
-                }
-                return log.traceExit(callableEntryMessage, result ? Optional.of(path) : Optional.empty());
+                final boolean contains = Files.lines(path).anyMatch(line -> line.contains(getText()));
+                return log.traceExit(callableEntryMessage, contains ? Optional.of(path) : Optional.empty());
             });
         }
 
@@ -174,15 +166,9 @@ class TextSearchService extends Service<List<Path>> {
          *
          * @return list of futures with results of the file reading
          */
-        private List<Future<Optional<Path>>> walk() {
+        private List<Future<Optional<Path>>> walk() throws IOException {
             final EntryMessage m = log.traceEntry("walk() of {}", this);
-            final Stream<Path> stream;
-            try {
-                stream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
-            } catch (final IOException err) {
-                log.error(m, err);
-                return log.traceExit(m, Collections.emptyList());
-            }
+            final Stream<Path> stream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
             final List<Future<Optional<Path>>> result = iterateThroughFiles(stream.iterator());
             stream.close();
             return log.traceExit(m, result);

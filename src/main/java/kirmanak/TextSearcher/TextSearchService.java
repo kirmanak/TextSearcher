@@ -3,7 +3,6 @@ package kirmanak.TextSearcher;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
@@ -32,16 +31,10 @@ class TextSearchService extends Service<List<Path>> {
      * @param extension  Extension of target files
      * @param text       Text to search
      */
-    public TextSearchService(final Path rootFolder, final String extension, final String text) throws IllegalArgumentException {
+    public TextSearchService(final Path rootFolder, final String extension, final String text) {
         final EntryMessage entryMessage = log.traceEntry(
                 "TextSearchService(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text
         );
-        if (!Files.isDirectory(rootFolder) || !Files.isExecutable(rootFolder)) {
-            throw new IllegalArgumentException("Root folder must be a executable directory.");
-        }
-        if (extension.isEmpty() || extension.contains(".")) {
-            throw new IllegalArgumentException("Extension is incorrect.");
-        }
         this.rootFolder = rootFolder.normalize();
         this.extension = String.format(".%s", extension);
         this.text = text;
@@ -50,19 +43,13 @@ class TextSearchService extends Service<List<Path>> {
 
     @Override
     protected Task<List<Path>> createTask() {
-        return new TextSearchTask(getRootFolder(), getExtension(), getText());
+        return new TextSearchTask();
     }
 
-    @RequiredArgsConstructor
-    @Getter
     private class TextSearchTask extends Task<List<Path>> {
-        private final Path rootFolder;
-        private final String extension;
-        private final String text;
-
         @Override
         protected List<Path> call() throws IOException, ExecutionException {
-            final EntryMessage m = log.traceEntry("call() of {}", this);
+            final EntryMessage m = log.traceEntry("call()");
             updateMessage("Looking for files...");
             final List<Future<Optional<Path>>> futures = walk();
             updateMessage("Reading files...");
@@ -78,7 +65,7 @@ class TextSearchService extends Service<List<Path>> {
          * @return the unwrapping results
          */
         private List<Path> getResult(final List<Future<Optional<Path>>> futures) throws ExecutionException {
-            final EntryMessage m = log.traceEntry("getResult(futures = {}) of {}", futures, this);
+            final EntryMessage m = log.traceEntry("getResult(futures = {})", futures);
             final int FILE_COUNT = futures.size();
             final ArrayList<Path> result = new ArrayList<>(FILE_COUNT);
             int counter = 0;
@@ -99,7 +86,7 @@ class TextSearchService extends Service<List<Path>> {
          */
         private void getFuture(final Future<Optional<Path>> future, final Consumer<Path> consumer) throws ExecutionException {
             final EntryMessage m = log.traceEntry(
-                    "getFuture(future = {}, consumer = {}) of {}", future, consumer, this
+                    "getFuture(future = {}, consumer = {})", future, consumer
             );
             try {
                 future.get().ifPresent(consumer);
@@ -117,10 +104,10 @@ class TextSearchService extends Service<List<Path>> {
          * @return the callable to be executed
          */
         private Callable<Optional<Path>> pathToCallable(final Path path) {
-            final EntryMessage m = log.traceEntry("pathToCallable(path = {}) of {}", path, this);
+            final EntryMessage m = log.traceEntry("pathToCallable(path = {})", path);
             return log.traceExit(m, () -> {
                 final EntryMessage callableEntryMessage = log.traceEntry(
-                        "anonymous(path = {}) of {}", path, this
+                        "anonymous(path = {})", path
                 );
                 final boolean contains = Files.lines(path).anyMatch(line -> line.contains(getText()));
                 return log.traceExit(callableEntryMessage, contains ? Optional.of(path) : Optional.empty());
@@ -134,7 +121,7 @@ class TextSearchService extends Service<List<Path>> {
          * @return list containing futures made out of the paths
          */
         private List<Future<Optional<Path>>> iterateThroughFiles(final Iterator<Path> iterator) {
-            final EntryMessage m = log.traceEntry("iterateThroughFiles(iterator = {}) of {}", iterator, this);
+            final EntryMessage m = log.traceEntry("iterateThroughFiles(iterator = {})", iterator);
             final ExecutorService executorService = Executors.newWorkStealingPool();
             final List<Future<Optional<Path>>> result = new LinkedList<>();
             while (iterator.hasNext()) {
@@ -153,7 +140,7 @@ class TextSearchService extends Service<List<Path>> {
          * @return the decision
          */
         private boolean shouldBeChecked(final Path path) {
-            final EntryMessage m = log.traceEntry("shouldBeChecked(path = {}) of {}", path, this);
+            final EntryMessage m = log.traceEntry("shouldBeChecked(path = {})", path);
             final boolean answer = path.toString().endsWith(getExtension())
                     && Files.exists(path)
                     && Files.isRegularFile(path)
@@ -167,7 +154,7 @@ class TextSearchService extends Service<List<Path>> {
          * @return list of futures with results of the file reading
          */
         private List<Future<Optional<Path>>> walk() throws IOException {
-            final EntryMessage m = log.traceEntry("walk() of {}", this);
+            final EntryMessage m = log.traceEntry("walk()");
             final Stream<Path> stream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
             final List<Future<Optional<Path>>> result = iterateThroughFiles(stream.iterator());
             stream.close();

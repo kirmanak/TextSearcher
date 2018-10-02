@@ -21,7 +21,7 @@ public class EntryPoint extends Application {
      * @param primaryStage the main window
      */
     public void start(final Stage primaryStage) throws IOException {
-        final EntryMessage entryMessage = log.traceEntry("start(primaryStage = {}) of {}", primaryStage, this);
+        final EntryMessage entryMessage = log.traceEntry("start(primaryStage = {})", primaryStage);
         final FXMLLoader loader = new FXMLLoader(getClass().getResource("/main.fxml"));
         final Parent parent = loader.load();
         final WindowController controller = loader.getController();

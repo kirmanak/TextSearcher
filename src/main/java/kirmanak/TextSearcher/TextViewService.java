@@ -29,7 +29,7 @@ class TextViewService extends Service<TextArea> {
     private class TextViewTask extends Task<TextArea> {
         @Override
         protected TextArea call() throws IOException {
-            final EntryMessage m = log.traceEntry("call() of {}", this);
+            final EntryMessage m = log.traceEntry("call()");
             return log.traceExit(m, readText(initializeTextArea()));
         }
 
@@ -39,7 +39,7 @@ class TextViewService extends Service<TextArea> {
          * @return an configured TextArea instance
          */
         private TextArea initializeTextArea() {
-            final EntryMessage m = log.traceEntry("initializeTextArea() of {}", this);
+            final EntryMessage m = log.traceEntry("initializeTextArea()");
             final TextArea textArea = new TextArea();
             textArea.setEditable(false);
             return log.traceExit(m, textArea);
@@ -54,7 +54,7 @@ class TextViewService extends Service<TextArea> {
          */
         private TextArea readText(final TextArea textArea) throws IOException {
             // TODO: highlight the found text
-            final EntryMessage m = log.traceEntry("readText(textArea = {}) of {}", textArea, this);
+            final EntryMessage m = log.traceEntry("readText(textArea = {})", textArea);
             final Iterator<String> lineIterator = Files.lines(getPath()).iterator();
             while (lineIterator.hasNext()) {
                 final String line = lineIterator.next();

@@ -11,6 +11,7 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @RequiredArgsConstructor
@@ -37,7 +38,7 @@ public class TreeGeneratorService extends Service<TreeItem<Path>> {
          * @return the root of TreeView
          */
         private TreeItem<Path> generateTree() {
-            final EntryMessage m = log.traceEntry("generateTree() of {}", this);
+            final EntryMessage m = log.traceEntry("generateTree()");
             final TreeItem<Path> treeRoot = new TreeItem<>(getRoot());
             treeRoot.setExpanded(true);
             getPaths().stream().map(this::listOfPaths).forEach(list -> addPaths(treeRoot, list));
@@ -52,11 +53,11 @@ public class TreeGeneratorService extends Service<TreeItem<Path>> {
          * @return the list of paths
          */
         private List<Path> listOfPaths(final Path path) {
-            final EntryMessage m = log.traceEntry("listOfPaths(path = {}) of {}", path, this);
+            final EntryMessage m = log.traceEntry("listOfPaths(path = {})", path);
             final LinkedList<Path> pathsList = new LinkedList<>();
             pathsList.addFirst(path.getFileName());
             Path parent = path.getParent();
-            while (!parent.equals(getRoot())) {
+            while (Objects.nonNull(parent) && !parent.equals(getRoot())) {
                 pathsList.addFirst(parent.getFileName());
                 parent = parent.getParent();
             }

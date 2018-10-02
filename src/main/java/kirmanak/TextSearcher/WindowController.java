@@ -22,7 +22,7 @@ import java.util.Optional;
 @Log4j2
 @Getter
 @Setter
-class WindowController {
+public class WindowController {
     @FXML
     private TextField pathField;
     @FXML

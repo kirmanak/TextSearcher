@@ -16,7 +16,7 @@ import java.util.Objects;
 @Getter
 @RequiredArgsConstructor
 @Log4j2
-public class TreeGeneratorService extends Service<TreeItem<Path>> {
+class TreeGeneratorService extends Service<TreeItem<Path>> {
     private final List<Path> paths;
     private final Path root;
 

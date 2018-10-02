@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+@SuppressWarnings("WeakerAccess")
 @Log4j2
 @Getter
 @Setter

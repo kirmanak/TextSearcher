@@ -208,12 +208,9 @@ class WindowController {
     @FXML
     public void initialize() {
         final EntryMessage entryMessage = log.traceEntry("initialize()");
-        getTreeView()
-                .getSelectionModel()
-                .selectedItemProperty()
-                .addListener((observable, oldValue, newValue) ->
-                        Optional.ofNullable(newValue).ifPresent(this::selectionListener)
-                );
+        getTreeView().getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+                Optional.ofNullable(newValue).ifPresent(this::selectionListener)
+        );
         log.traceExit(entryMessage);
     }
 }

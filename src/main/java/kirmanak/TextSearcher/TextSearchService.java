@@ -32,7 +32,7 @@ class TextSearchService extends Service<List<Path>> {
 
     private class TextSearchTask extends Task<List<Path>> {
         @Override
-        protected List<Path> call() throws IOException, ExecutionException {
+        protected List<Path> call() throws IOException {
             final EntryMessage m = log.traceEntry("call()");
             updateMessage("Looking for files...");
             final List<Future<Optional<Path>>> futures = walk();

@@ -17,6 +17,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Log4j2
@@ -101,22 +102,15 @@ public class WindowController {
     @FXML
     protected void onSearchRequest() {
         final EntryMessage entryMessage = log.traceEntry("onSearchRequest()");
-        final Optional<Path> optionalRoot = getRoot();
-        if (!optionalRoot.isPresent()) {
-            return;
-        }
-        final Path root = optionalRoot.get();
-        final TextSearchService service;
-        try {
-            service = new TextSearchService(root, getExtensionField().getText(), getTextField().getText());
-        } catch (final IllegalArgumentException err) {
-            log.error(entryMessage, err);
-            return;
-        }
-        service.setOnRunning(this::onTaskRunning);
-        service.setOnFailed(this::onTaskFailed);
-        service.setOnSucceeded(event -> onSearchSucceeded(service.getValue()));
-        service.start();
+        getRoot().ifPresent(path -> {
+            final TextSearchService service = new TextSearchService(
+                    path, getExtensionField().getText(), getTextField().getText()
+            );
+            service.setOnRunning(this::onTaskRunning);
+            service.setOnFailed(this::onTaskFailed);
+            service.setOnSucceeded(event -> onSearchSucceeded(service.getValue()));
+            service.start();
+        });
         log.traceExit(entryMessage);
     }
 
@@ -160,9 +154,20 @@ public class WindowController {
     private void onTaskFailed(final WorkerStateEvent event) {
         final EntryMessage entryMessage = log.traceEntry("onTaskFailed(event = {})", event);
         getProgressIndicator().setVisible(false);
-        final Alert alert = new Alert(Alert.AlertType.ERROR, event.getSource().getException().getMessage());
-        alert.showAndWait();
+        final Throwable throwable = event.getSource().getException();
+        log.error(entryMessage, throwable);
+        showError(throwable.getMessage());
         log.traceExit(entryMessage);
+    }
+
+    /**
+     * Shows error message to the user
+     *
+     * @param message the message to show
+     */
+    private void showError(final String message) {
+        final Alert alert = new Alert(Alert.AlertType.ERROR, message);
+        alert.showAndWait();
     }
 
     /**
@@ -173,19 +178,19 @@ public class WindowController {
     private Optional<Path> getRoot() {
         final EntryMessage entryMessage = log.traceEntry("getRoot()");
         final String folderPath = getPathField().getText();
-        if (!Optional.ofNullable(root).isPresent() && !folderPath.isEmpty()) {
+        if (Objects.isNull(root) && !folderPath.isEmpty()) {
             try {
                 root = Paths.get(folderPath);
             } catch (final InvalidPathException err) {
                 log.error(entryMessage, err);
-                return log.traceExit(entryMessage, Optional.empty());
             }
         }
-        if (Optional.ofNullable(root).isPresent() && Files.exists(root) && Files.isDirectory(root)) {
-            return log.traceExit(entryMessage, Optional.of(root));
+        if (Objects.nonNull(root) && !Files.isDirectory(root)) {
+            showError("Search path must be a directory");
+            root = root.getParent();
+            getPathField().setText(root.toString());
         }
-        root = null;
-        return log.traceExit(entryMessage, Optional.empty());
+        return log.traceExit(entryMessage, Optional.ofNullable(root));
     }
 
     @FXML

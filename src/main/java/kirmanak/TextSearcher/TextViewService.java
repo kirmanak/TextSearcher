@@ -11,7 +11,6 @@ import org.apache.logging.log4j.message.EntryMessage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Iterator;
 
 @Log4j2
 @Getter
@@ -55,12 +54,9 @@ class TextViewService extends Service<TextArea> {
         private TextArea readText(final TextArea textArea) throws IOException {
             // TODO: highlight the found text
             final EntryMessage m = log.traceEntry("readText(textArea = {})", textArea);
-            final Iterator<String> lineIterator = Files.lines(getPath()).iterator();
-            while (lineIterator.hasNext()) {
-                final String line = lineIterator.next();
-                textArea.appendText(line);
-                textArea.appendText("\n");
-            }
+            final StringBuilder stringBuilder = new StringBuilder();
+            Files.lines(getPath()).forEach(line -> stringBuilder.append(line).append("\n"));
+            textArea.setText(stringBuilder.toString());
             return log.traceExit(m, textArea);
         }
     }

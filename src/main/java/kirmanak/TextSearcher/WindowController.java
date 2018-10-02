@@ -166,6 +166,7 @@ public class WindowController {
      */
     private void showError(final String message) {
         final Alert alert = new Alert(Alert.AlertType.ERROR, message);
+        alert.setResizable(true);
         alert.showAndWait();
     }
 

@@ -11,10 +11,12 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 @Getter
 @Log4j2
@@ -115,49 +117,20 @@ class TextSearchService extends Service<List<Path>> {
         }
 
         /**
-         * Iterates over the provided paths creating list of futures
-         *
-         * @param iterator the iterator over the paths
-         * @return list containing futures made out of the paths
-         */
-        private List<Future<Optional<Path>>> iterateThroughFiles(final Iterator<Path> iterator) {
-            final EntryMessage m = log.traceEntry("iterateThroughFiles(iterator = {})", iterator);
-            final ExecutorService executorService = Executors.newWorkStealingPool();
-            final List<Future<Optional<Path>>> result = new LinkedList<>();
-            while (iterator.hasNext()) {
-                final Path current = iterator.next();
-                if (shouldBeChecked(current)) {
-                    result.add(executorService.submit(pathToCallable(current)));
-                }
-            }
-            return log.traceExit(m, result);
-        }
-
-        /**
-         * Checks whether the path should be read or not
-         *
-         * @param path the path to be checked
-         * @return the decision
-         */
-        private boolean shouldBeChecked(final Path path) {
-            final EntryMessage m = log.traceEntry("shouldBeChecked(path = {})", path);
-            final boolean answer = path.toString().endsWith(getExtension())
-                    && Files.exists(path)
-                    && Files.isRegularFile(path)
-                    && Files.isReadable(path);
-            return log.traceExit(m, answer);
-        }
-
-        /**
          * Walks through the file system starting from the root path
          *
          * @return list of futures with results of the file reading
          */
         private List<Future<Optional<Path>>> walk() throws IOException {
             final EntryMessage m = log.traceEntry("walk()");
-            final Stream<Path> stream = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS);
-            final List<Future<Optional<Path>>> result = iterateThroughFiles(stream.iterator());
-            stream.close();
+            final ExecutorService executorService = Executors.newWorkStealingPool();
+            final List<Future<Optional<Path>>> result = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
+                    .filter(path -> path.toString().endsWith(getExtension()))
+                    .filter(Files::isRegularFile)
+                    .filter(Files::isReadable)
+                    .map(this::pathToCallable)
+                    .map(executorService::submit)
+                    .collect(Collectors.toList());
             return log.traceExit(m, result);
         }
     }

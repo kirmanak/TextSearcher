@@ -3,12 +3,11 @@ package kirmanak.TextSearcher;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import lombok.Getter;
-import lombok.ToString;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.logging.log4j.message.EntryMessage;
 
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -20,28 +19,11 @@ import java.util.stream.Collectors;
 
 @Getter
 @Log4j2
-@ToString
+@RequiredArgsConstructor
 class TextSearchService extends Service<List<Path>> {
     private final Path rootFolder;
     private final String extension;
     private final String text;
-
-    /**
-     * Creates a new instance of TextSearchService
-     *
-     * @param rootFolder Path from which to start the searching
-     * @param extension  Extension of target files
-     * @param text       Text to search
-     */
-    TextSearchService(final Path rootFolder, final String extension, final String text) {
-        final EntryMessage entryMessage = log.traceEntry(
-                "TextSearchService(rootFolder = {}, extension = {}, text = {})", rootFolder, extension, text
-        );
-        this.rootFolder = rootFolder.normalize();
-        this.extension = String.format(".%s", extension);
-        this.text = text;
-        log.traceExit(entryMessage);
-    }
 
     @Override
     protected Task<List<Path>> createTask() {
@@ -66,7 +48,7 @@ class TextSearchService extends Service<List<Path>> {
          * @param futures the futures to be unwrapped
          * @return the unwrapping results
          */
-        private List<Path> getResult(final List<Future<Optional<Path>>> futures) throws ExecutionException {
+        private List<Path> getResult(final List<Future<Optional<Path>>> futures) {
             final EntryMessage m = log.traceEntry("getResult(futures = {})", futures);
             final int FILE_COUNT = futures.size();
             final ArrayList<Path> result = new ArrayList<>(FILE_COUNT);
@@ -86,7 +68,7 @@ class TextSearchService extends Service<List<Path>> {
          * @param future   the future to be unwrapped
          * @param consumer the consumer of the result
          */
-        private void getFuture(final Future<Optional<Path>> future, final Consumer<Path> consumer) throws ExecutionException {
+        private void getFuture(final Future<Optional<Path>> future, final Consumer<Path> consumer) {
             final EntryMessage m = log.traceEntry(
                     "getFuture(future = {}, consumer = {})", future, consumer
             );
@@ -95,6 +77,8 @@ class TextSearchService extends Service<List<Path>> {
             } catch (final InterruptedException err) {
                 log.error(m, err);
                 Thread.currentThread().interrupt();
+            } catch (final ExecutionException err) {
+                log.error(m, err);
             }
             log.traceExit(m);
         }
@@ -124,9 +108,9 @@ class TextSearchService extends Service<List<Path>> {
         private List<Future<Optional<Path>>> walk() throws IOException {
             final EntryMessage m = log.traceEntry("walk()");
             final ExecutorService executorService = Executors.newWorkStealingPool();
-            final List<Future<Optional<Path>>> result = Files.walk(getRootFolder(), FileVisitOption.FOLLOW_LINKS)
-                    .filter(path -> path.toString().endsWith(getExtension()))
-                    .filter(Files::isRegularFile)
+            final FileFinder fileFinder = new FileFinder(getExtension());
+            Files.walkFileTree(getRootFolder(), fileFinder);
+            final List<Future<Optional<Path>>> result = fileFinder.getPaths().stream()
                     .filter(Files::isReadable)
                     .map(this::pathToCallable)
                     .map(executorService::submit)

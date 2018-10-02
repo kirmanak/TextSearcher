@@ -16,6 +16,7 @@ import java.util.Iterator;
 @Log4j2
 @Getter
 @RequiredArgsConstructor
+// TODO: use something faster
 class TextViewService extends Service<TextArea> {
     private final Path path;
     private final String text;

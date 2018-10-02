@@ -52,8 +52,7 @@ public class WindowController {
         service.setOnRunning(this::onTaskRunning);
         service.setOnFailed(this::onTaskFailed);
         service.setOnSucceeded(stateEvent -> {
-            // TODO: use something faster
-            addTab((TextArea) stateEvent.getSource().getValue(), newValue);
+            addTab(service.getValue(), newValue);
             getProgressIndicator().setVisible(false);
         });
         service.start();
@@ -117,7 +116,7 @@ public class WindowController {
         }
         service.setOnRunning(this::onTaskRunning);
         service.setOnFailed(this::onTaskFailed);
-        service.setOnSucceeded(this::onSearchSucceeded);
+        service.setOnSucceeded(event -> onSearchSucceeded(service.getValue()));
         service.start();
         log.traceExit(entryMessage);
     }
@@ -125,19 +124,17 @@ public class WindowController {
     /**
      * Generates a TreeView on successful search
      *
-     * @param stateEvent the search result
+     * @param paths the search result
      */
-    private void onSearchSucceeded(final WorkerStateEvent stateEvent) {
-        final EntryMessage entryMessage = log.traceEntry("onSearchSucceeded(stateEvent = {})", stateEvent);
+    private void onSearchSucceeded(final List<Path> paths) {
+        final EntryMessage entryMessage = log.traceEntry("onSearchSucceeded(paths = {})", paths);
         getProgressIndicator().setVisible(false);
-        final TreeGeneratorService service = new TreeGeneratorService(
-                (List<Path>) stateEvent.getSource().getValue(), root
-        );
+        final TreeGeneratorService service = new TreeGeneratorService(paths, root);
         service.setOnRunning(this::onTaskRunning);
         service.setOnFailed(this::onTaskFailed);
         service.setOnSucceeded(event -> {
             getProgressIndicator().setVisible(false);
-            getTreeView().setRoot((TreeItem<Path>) event.getSource().getValue());
+            getTreeView().setRoot(service.getValue());
         });
         service.start();
         log.traceExit(entryMessage);

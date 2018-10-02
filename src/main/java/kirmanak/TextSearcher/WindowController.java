@@ -178,11 +178,13 @@ public class WindowController {
     private Optional<Path> getRoot() {
         final EntryMessage entryMessage = log.traceEntry("getRoot()");
         final String folderPath = getPathField().getText();
-        if (Objects.isNull(root) && !folderPath.isEmpty()) {
-            try {
-                root = Paths.get(folderPath);
-            } catch (final InvalidPathException err) {
-                log.error(entryMessage, err);
+        if (!folderPath.isEmpty()) {
+            if (Objects.isNull(root) || !root.toString().equals(folderPath)) {
+                try {
+                    root = Paths.get(folderPath);
+                } catch (final InvalidPathException err) {
+                    log.error(entryMessage, err);
+                }
             }
         }
         if (Objects.nonNull(root) && !Files.isDirectory(root)) {
